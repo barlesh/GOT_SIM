@@ -115,6 +115,7 @@ refreshSim() ->
 %routine happanes every time multimedia server closed
 close_mull_server() ->
 	refresh_Process!stop,
+	%TODO - free simuletions memory 
 	exit(-1).
 %this function wait for inner msg (3 types of msgs), or user request from GUI:
 %a. (inner) show - comes every ~10 [ms] and replace current screen with new one with ets's info

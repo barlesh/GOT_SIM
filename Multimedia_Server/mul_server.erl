@@ -1,8 +1,8 @@
 %% @author bar
 
--author('BarLesh').
--module(mul_server).
 
+-module(mul_server).
+-author('BarLesh').
 
 -export([start/0, run/0, test/1]).
 -include_lib("wx/include/wx.hrl").

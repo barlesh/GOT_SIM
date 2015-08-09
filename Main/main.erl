@@ -1,16 +1,18 @@
 %this is a module of main process that runs simulation. it ask user for simulation's parameters, and after getting them, it remotly init Admin processes of sun computing systems (Beagleboards)   
-
--author('BarLesh').
 -module(main).
-
-
+-author('BarLesh').
 -export([start/0]).
 
 %this function start GUI that ssk from user the simulation's parameters.
 askForInput() ->
+	menu:start().
+%starts Graphical show of sumulation
+initSimGraphics() -> spawn(fun()-> mul_server:start() end).
+
+%initiate Admins processes at remote Controllers
+initAdmins(Parameters)->
+	%rpc mutherfucker
 	[].
-
-
 
 %his function is called when simulation is stopped. it send killing signal to all Beagleboards's Admins, wait for confermation from all of them, then send killing signal to SimGrahics GUI, and then killes statistics
 stop()->
@@ -26,14 +28,15 @@ start() ->
 	spawn(fun()-> statistics:start() end),
 	%get parameters from user
 	Parameters = askForInput(),
-
 	initSimGraphics(),
 	initAdmins(Parameters),
+	statistics_server!start,
+	%wit for command to end simulation (can come from either simulation GUI window or Terminal
 	receive
-		{stop, multimedia_server} -> 	io:format("Sim stopping because of multimedia server~"),
+		{stop, multimedia_server} -> 	io:format("Sim stopping because of multimedia server~n"),
 						stop();
-		{stop, Terminal} -> 		io:format("Sim stopping because of command from Terminal~"),
-						stop();
+		{stop, terminal} -> 		io:format("Sim stopping because of command from Terminal~n"),
+						stop()
 	end.
 	
 

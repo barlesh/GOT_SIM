@@ -84,15 +84,30 @@ make_window() ->
 
     %set image
     
-    wxFrame:connect(Canvas, paint),
-    ClientDC = wxClientDC:new(Canvas),
-    DC=wxBufferedDC:new(ClientDC),
+    wxPanel:connect(Canvas, paint, []),
+    wxPanel:connect(Canvas, size),
     wxSizer:add(ImageSizer, Canvas, []),
-    BG=wxBitmap:new(wxImage:new("/home/barlesh/Erworkspace/FinalProject/bar/ww.png")),
-    wxDC:drawBitmap(DC, BG, {0,0}),
-    wxBufferedDC:destroy(DC),
-    wxClientDC:destroy(ClientDC),
+    wxSizer:add( OuterSizer,ImageSizer, []),
 
+    DC = wxPaintDC:new(Canvas),
+    BG=wxBitmap:new(wxImage:new("/home/barlesh/Erworkspace/FinalProject/bar/snow-bg.png")),
+    MemoryDC = wxMemoryDC:new(BG),
+     wxDC:clear(DC),
+    wxDC:drawBitmap(DC, BG, {0,0}),
+
+    CDC = wxWindowDC:new(Canvas),
+    wxDC:blit(CDC, {0,0},
+	      {wxBitmap:getWidth(BG), wxBitmap:getHeight(BG)},
+	      MemoryDC, {0,0}),    
+    wxWindowDC:destroy(CDC),
+    wxMemoryDC:destroy(MemoryDC),
+
+
+    %ClientDC = wxClientDC:new(Canvas),
+    %DC=wxBufferedDC:new(ClientDC), 
+    %wxDC:drawBitmap(DC, BG, {0,0}),
+    %wxBufferedDC:destroy(DC),
+    %wxClientDC:destroy(ClientDC),
 
 %% Now 'set' OuterSizer into the Panel
     wxPanel:setSizer(Panel, OuterSizer),
@@ -110,7 +125,7 @@ loop(State) ->
 		NW=list_to_integer(wxTextCtrl:getValue(T1001)),
 		WW=list_to_integer(wxTextCtrl:getValue(T1002)),
 		Z=list_to_integer(wxTextCtrl:getValue(T1003)),	
-		case checkParams(NW,WW,Z) of true-> main!{NW,WW,Z}, exitMenu(Frame); false -> showError(Frame) end;
+		case checkParams(NW,WW,Z) of ok-> main!{NW,WW,Z}, exitMenu(Frame); error -> showError(Frame) end;
 
 	#wx{event=#wxClose{}} ->
             io:format("~p Closing window ~n",[self()]), %optional, goes to shell
@@ -133,20 +148,22 @@ showError(Frame)->
 %returns true if parameter given is at valid range
 checkParams(NW,WW,Z)-> 	
 	io:format("params ar check Params are ~p,~p,~p~n", [NW,WW,Z]),
+	ok.
 	%TODO - fix!	
-	case NW of 
-		NW1 when NW1<?MIN_NW -> false;
-		NW2 when NW2>?MAX_NW -> false;
-		Else -> 
-			case WW of 
-				WW1 when WW1<?MIN_WW -> false;
-				WW2 when WW2>?MAX_WW -> false;	
-				Else -> 
-					case Z of 
-					Z1 when Z1<?MIN_ZOMBIE -> false;
-					Z2 when Z2>?MAX_ZOMBIE -> false;
-					Else -> true
-					end
-			end
-	end.
+	%case NW of 
+	%	NW1 when NW1<?MIN_NW -> error;
+	%	NW2 when NW2>?MAX_NW -> error;
+	%	Else -> 
+	%		case WW of 
+	%			WW1 when WW1<?MIN_WW -> error;
+	%			WW2 when WW2>?MAX_WW -> error;	
+	%			Else -> 
+	%				case Z of 
+	%				Z1 when Z1<?MIN_ZOMBIE -> error;
+	%				Z2 when Z2>?MAX_ZOMBIE -> error;
+	%				Else -> ok
+	%				end
+	%		end
+	%end.
+
 
