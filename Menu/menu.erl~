@@ -11,6 +11,7 @@
 -define(MAX_WW,(15)).
 -define(MAX_ZOMBIE,(100)).
 
+-record(parameters, {frame,canvas, nw, ww, z}).
 
 %% Note these changes from wxcd04.erl
 %% 1) gave T1001 a default value of 10
@@ -27,9 +28,9 @@ start() ->
  
 make_window() ->
     Server = wx:new(),
-    Frame = wxFrame:new(Server, -1, "GOT Sim Menu", [{size,{900, 400}}]),
+    Frame = wxFrame:new(Server, -1, "GOT Sim Menu", [{size,{900, 600}}]),
     Panel  = wxPanel:new(Frame),
-    Canvas = wxPanel:new(Panel, []),
+
  
 %% create widgets
 %% the order entered here does not control appearance
@@ -43,10 +44,11 @@ make_window() ->
 %%the widgets have to exist before they are added to sizer.
     OuterSizer   = wxBoxSizer:new(?wxHORIZONTAL),
     ImageSizer   = wxBoxSizer:new(?wxVERTICAL),
+   %ImageSizer   = wxStaticBoxSizer:new(?wxVERTICAL, Panel, []),
     MainSizer    = wxBoxSizer:new(?wxVERTICAL),
-    NW_InputSizer  = wxStaticBoxSizer:new(?wxHORIZONTAL, Panel, [{label, "Number of Night Watch Warriors"}]),
-    WW_InputSizer  = wxStaticBoxSizer:new(?wxHORIZONTAL, Panel, [{label, "Number of White Walkers"}]),
-    Z_InputSizer  = wxStaticBoxSizer:new(?wxHORIZONTAL, Panel, [{label, "Number of Zombies"}]),
+    NW_InputSizer  = wxStaticBoxSizer:new(?wxHORIZONTAL, Panel, [{label, "# of Night Watch Warriors"}]),
+    WW_InputSizer  = wxStaticBoxSizer:new(?wxHORIZONTAL, Panel, [{label, "# of White Walkers"}]),
+    Z_InputSizer  = wxStaticBoxSizer:new(?wxHORIZONTAL, Panel, [{label, "# of Zombies"}]),
     ButtonSizer = wxBoxSizer:new(?wxHORIZONTAL),
  
 %% Note that the widget is added using the VARIABLE, not the ID.
@@ -62,7 +64,7 @@ make_window() ->
     wxSizer:add(Z_InputSizer, 120, 0,[]),  %see note in tutorial text
 
 
-    wxSizer:addSpacer(MainSizer, 90),  %spacer
+    wxSizer:addSpacer(MainSizer, 15),  %spacer
     wxSizer:add(MainSizer, NW_InputSizer,[]),
     wxSizer:addSpacer(MainSizer, 5),  %spacer
     
@@ -81,33 +83,17 @@ make_window() ->
  
     wxSizer:addSpacer(OuterSizer, 20), % spacer
     wxSizer:add(OuterSizer, MainSizer, []),
+    wxSizer:addSpacer(OuterSizer, 60), % spacer
 
     %set image
-    
+    Canvas = wxPanel:new(Panel, [{size, {570, 570}}]),
+
     wxPanel:connect(Canvas, paint, []),
-    wxPanel:connect(Canvas, size),
+    %wxPanel:connect(Canvas, size),
+    wxSizer:addSpacer(ImageSizer, 15), % spacer
     wxSizer:add(ImageSizer, Canvas, []),
     wxSizer:add( OuterSizer,ImageSizer, []),
 
-    DC = wxPaintDC:new(Canvas),
-    BG=wxBitmap:new(wxImage:new("/home/barlesh/Erworkspace/FinalProject/bar/snow-bg.png")),
-    MemoryDC = wxMemoryDC:new(BG),
-     wxDC:clear(DC),
-    wxDC:drawBitmap(DC, BG, {0,0}),
-
-    CDC = wxWindowDC:new(Canvas),
-    wxDC:blit(CDC, {0,0},
-	      {wxBitmap:getWidth(BG), wxBitmap:getHeight(BG)},
-	      MemoryDC, {0,0}),    
-    wxWindowDC:destroy(CDC),
-    wxMemoryDC:destroy(MemoryDC),
-
-
-    %ClientDC = wxClientDC:new(Canvas),
-    %DC=wxBufferedDC:new(ClientDC), 
-    %wxDC:drawBitmap(DC, BG, {0,0}),
-    %wxBufferedDC:destroy(DC),
-    %wxClientDC:destroy(ClientDC),
 
 %% Now 'set' OuterSizer into the Panel
     wxPanel:setSizer(Panel, OuterSizer),
@@ -116,27 +102,30 @@ make_window() ->
     wxPanel:connect(Panel, command_button_clicked),
 
     wxFrame:show(Frame),
-    {Frame, T1001,T1002,T1003}.  %the return value will go here, soon
+    #parameters{frame=Frame,canvas=Canvas, nw=T1001, ww=T1002, z=T1003}.
  
 loop(State) -> 
+	ClientDC = wxClientDC:new(State#parameters.canvas),
+	Bitmap = wxBitmap:new(wxImage:new("/home/barlesh/Erworkspace/FinalProject/bar/snow-bg.png")),
+	wxDC:drawBitmap(ClientDC, Bitmap, {0,0}),
+	wxBitmap:destroy(Bitmap),
+	wxClientDC:destroy(ClientDC),
 	receive 
 	#wx{id = 101, event=#wxCommand{type = command_button_clicked}} ->
-		{Frame, T1001,T1002,T1003} = State,
-		NW=list_to_integer(wxTextCtrl:getValue(T1001)),
-		WW=list_to_integer(wxTextCtrl:getValue(T1002)),
-		Z=list_to_integer(wxTextCtrl:getValue(T1003)),	
-		case checkParams(NW,WW,Z) of ok-> main!{NW,WW,Z}, exitMenu(Frame); error -> showError(Frame) end;
+		NW=list_to_integer(wxTextCtrl:getValue(State#parameters.nw)),
+		WW=list_to_integer(wxTextCtrl:getValue(State#parameters.ww)),
+		Z=list_to_integer(wxTextCtrl:getValue(State#parameters.z)),	
+		case checkParams(NW,WW,Z) of ok-> main!{NW,WW,Z}, exitMenu(State#parameters.frame); error -> showError(State#parameters.frame) end;
 
 	#wx{event=#wxClose{}} ->
             io:format("~p Closing window ~n",[self()]), %optional, goes to shell
-	{Frame, _,_,_} = State,
-        exitMenu(Frame);
+        exitMenu(State#parameters.frame);
 
 	           %this message is sent when the exit button is clicked.
 	#wx{id = ?wxID_EXIT, event=#wxCommand{type = command_button_clicked} } ->
             io:format("~p Closing window ~n",[self()]), 
-	{Frame, _,_,_} = State,
-        exitMenu(Frame)
+        exitMenu(State#parameters.frame);
+	changBG -> []
 	end,
 	loop(State).
 
@@ -165,4 +154,5 @@ checkParams(NW,WW,Z)->
 	%				end
 	%		end
 	%end.
+
 

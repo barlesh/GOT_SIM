@@ -205,7 +205,7 @@ int_set_char(Ets, New_char_record)->
 %Create new character recored. 
 int_make_char_record(Type, Location) ->
 	%%%INSERT NAME WHEN STARTING LINK
-	{Ok, Pid}=char_gfsm:start_link({biggle_gen_server, Type, Location}),
+	{ok, Pid}=char_gfsm:start_link({biggle_gen_server, Type, Location}),
 	#character{type=Type, location=Location, pid=Pid}. %add pid
 
 
