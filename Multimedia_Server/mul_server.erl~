@@ -1,8 +1,8 @@
 %% @author bar
 
--author('BarLesh').
--module(mul_server).
 
+-module(mul_server).
+-author('BarLesh').
 
 -export([start/0, run/0, test/1]).
 -include_lib("wx/include/wx.hrl").
@@ -85,9 +85,9 @@ show(_,_, '$end_of_table',_,_,_,_) -> done;
 show(DC,ETS_table, Key, NW_IMG, WW_IMG, Z_IMG, CORPSE_IMG) -> 
 	[{Key, {Type, Pos, Angle}}] = ets:lookup(ETS_table, Key),
 	case Type of 
-		nw -> Temp =  wxImage:rotate(NW_IMG,Angle, Pos);
-		ww -> Temp =  wxImage:rotate(WW_IMG,Angle, Pos);
-		z -> Temp =  wxImage:rotate(Z_IMG,Angle, Pos)
+		warrior -> Temp =  wxImage:rotate(NW_IMG,Angle, Pos);
+		white_walker -> Temp =  wxImage:rotate(WW_IMG,Angle, Pos);
+		zombie -> Temp =  wxImage:rotate(Z_IMG,Angle, Pos)
 	end,
 	Bitmap=wxBitmap:new(Temp),
 	wxDC:drawBitmap(DC, Bitmap, Pos),
@@ -151,15 +151,15 @@ move(Key, Type) ->
 	Y1 =  random:uniform(700),
 	Y2 =  random:uniform(700),
 	case Type of
-	nw-> multimedia_server!{movement, {nw, Key, {X1,Y1}, {X2,Y2} } };
-	ww-> multimedia_server!{movement, {ww, Key, {X1,Y1}, {X2,Y2} } };
-	z -> multimedia_server!{movement, {z, Key, {X1,Y1}, {X2,Y2} } }
+	warrior-> multimedia_server!{movement, {warrior, Key, {X1,Y1}, {X2,Y2} } };
+	white_walker-> multimedia_server!{movement, {white_walker, Key, {X1,Y1}, {X2,Y2} } };
+	zombie -> multimedia_server!{movement, {zombie, Key, {X1,Y1}, {X2,Y2} } }
 	end.
 	
 test(N) -> 
-	[ move( "nw"++integer_to_list(X), nw) || X<-lists:seq(1,trunc(N/3))],
+	[ move( "nw"++integer_to_list(X), warrior) || X<-lists:seq(1,trunc(N/3))],
 	timer:sleep(17),
-	[ move( "ww"++integer_to_list(X), ww) || X<-lists:seq(1,trunc(N/3))],
+	[ move( "ww"++integer_to_list(X), white_walker) || X<-lists:seq(1,trunc(N/3))],
 	timer:sleep(17),
-	[ move( "z"++integer_to_list(X), z) || X<-lists:seq(1,trunc(N/3) )].
+	[ move( "z"++integer_to_list(X), zombie) || X<-lists:seq(1,trunc(N/3) )].
 

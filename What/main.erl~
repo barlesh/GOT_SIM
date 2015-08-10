@@ -5,7 +5,7 @@
 
 %this function start GUI that ssk from user the simulation's parameters.
 askForInput() ->
-	spawn(fun()-> menu:start1() end),
+	menu:start1(),
 	receive
 	Param-> Param
 	end.
@@ -28,7 +28,7 @@ stop()->
 start() ->
 	register(main, self()),
 	%init Statistics Server
-	spawn(fun()-> statistics:start() end),
+	%spawn(fun()-> statistics:start() end),
 	%get parameters from user
 	Parameters = askForInput(),
 	io:format("Params are ~p~n", [Parameters]),

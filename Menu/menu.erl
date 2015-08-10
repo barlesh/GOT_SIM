@@ -22,7 +22,21 @@ exitMenu(Frame) -> %TODO
 	wxWindow:destroy(Frame),
 	exit(-1).
 
-start() ->
+refreshIMGthread()->
+	receive
+	{'DOWN', Ref, process, Pid2, Reason} -> exit(-1)
+	after 7000 -> menu!changIMG
+	end,
+	refreshIMGthread().
+
+refreshIMGthread(Menu_Pid)->
+	erlang:monitor(process, Menu_Pid),
+	refreshIMGthread().
+
+start1() ->
+    MyPid = self(),
+    register(menu,MyPid),
+    spawn(fun()-> refreshIMGthread(MyPid) end),
     State = make_window(),
     loop (State).
  
@@ -105,11 +119,7 @@ make_window() ->
     #parameters{frame=Frame,canvas=Canvas, nw=T1001, ww=T1002, z=T1003}.
  
 loop(State) -> 
-	ClientDC = wxClientDC:new(State#parameters.canvas),
-	Bitmap = wxBitmap:new(wxImage:new("/home/barlesh/Erworkspace/FinalProject/bar/snow-bg.png")),
-	wxDC:drawBitmap(ClientDC, Bitmap, {0,0}),
-	wxBitmap:destroy(Bitmap),
-	wxClientDC:destroy(ClientDC),
+	
 	receive 
 	#wx{id = 101, event=#wxCommand{type = command_button_clicked}} ->
 		NW=list_to_integer(wxTextCtrl:getValue(State#parameters.nw)),
@@ -125,7 +135,7 @@ loop(State) ->
 	#wx{id = ?wxID_EXIT, event=#wxCommand{type = command_button_clicked} } ->
             io:format("~p Closing window ~n",[self()]), 
         exitMenu(State#parameters.frame);
-	changBG -> []
+	changIMG -> changeIMG(State#parameters.canvas)
 	end,
 	loop(State).
 
@@ -133,6 +143,26 @@ loop(State) ->
 showError(Frame)->
 	D = wxMessageDialog:new (Frame, "Wrong Parameters. Try again"),
 	wxMessageDialog:showModal (D). 
+
+changeIMG(Canvas) ->
+	X= random:uniform(10),
+	case X of 
+		1-> IMG=wxImage:new("/home/barlesh/Erworkspace/FinalProject/GOT_SIM/Files/GOT1.png");
+		2-> IMG=wxImage:new("/home/barlesh/Erworkspace/FinalProject/GOT_SIM/Files/GOT2.png");
+		3-> IMG=wxImage:new("/home/barlesh/Erworkspace/FinalProject/GOT_SIM/Files/GOT3.png");
+		4-> IMG=wxImage:new("/home/barlesh/Erworkspace/FinalProject/GOT_SIM/Files/GOT4.png");
+		5-> IMG=wxImage:new("/home/barlesh/Erworkspace/FinalProject/GOT_SIM/Files/GOT5.png");
+		6-> IMG=wxImage:new("/home/barlesh/Erworkspace/FinalProject/GOT_SIM/Files/GOT6.png");
+		7-> IMG=wxImage:new("/home/barlesh/Erworkspace/FinalProject/GOT_SIM/Files/GOT7.png");
+		8-> IMG=wxImage:new("/home/barlesh/Erworkspace/FinalProject/GOT_SIM/Files/GOT8.png");
+		9-> IMG=wxImage:new("/home/barlesh/Erworkspace/FinalProject/GOT_SIM/Files/GOT9.png");
+		10->IMG=wxImage:new("/home/barlesh/Erworkspace/FinalProject/GOT_SIM/Files/GOT10.png") 
+	end,
+	ClientDC = wxClientDC:new(Canvas),
+	Bitmap = wxBitmap:new(IMG),
+	wxDC:drawBitmap(ClientDC, Bitmap, {0,0}),
+	wxBitmap:destroy(Bitmap),
+	wxClientDC:destroy(ClientDC).
 	
 %returns true if parameter given is at valid range
 checkParams(NW,WW,Z)-> 	

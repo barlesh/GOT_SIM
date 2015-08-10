@@ -5,7 +5,10 @@
 
 %this function start GUI that ssk from user the simulation's parameters.
 askForInput() ->
-	menu:start().
+	spawn(fun()-> menu:start1() end),
+	receive
+	Param-> Param
+	end.
 %starts Graphical show of sumulation
 initSimGraphics() -> spawn(fun()-> mul_server:start() end).
 
@@ -28,6 +31,7 @@ start() ->
 	spawn(fun()-> statistics:start() end),
 	%get parameters from user
 	Parameters = askForInput(),
+	io:format("Params are ~p~n", [Parameters]),
 	initSimGraphics(),
 	initAdmins(Parameters),
 	statistics_server!start,
@@ -35,9 +39,10 @@ start() ->
 	receive
 		{stop, multimedia_server} -> 	io:format("Sim stopping because of multimedia server~n"),
 						stop();
-		{stop, Terminal} -> 		io:format("Sim stopping because of command from Terminal~n"),
+		{stop, terminal} -> 		io:format("Sim stopping because of command from Terminal~n"),
 						stop()
-	end.
+	end,
+	start().
 	
 
 killAdmins()-> [].
