@@ -144,7 +144,7 @@ handle_call({move_request, Curr_location, Destination, Type}, {From_pid, _ref}, 
 				'undefined' ->
 					do_nothing; 
 				_Else       ->
-					multimedia_server ! {movement, {Type, From_pid, Curr_location, Destination }  }%%Update multimedia
+					server_gate ! {movement, {Type, From_pid, Curr_location, Destination }  }%%Update multimedia
 			end;		
 		_Not_free ->
 			Reply={denied, {}}

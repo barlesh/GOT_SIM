@@ -18,7 +18,7 @@ loop()->
 								corpse -> statistics_server!{zombie, created}
 								end;
 	{movement, {Type, Name, {X1,Y1}, {X2,Y2} }  } -> spawn(fun()-> mul_server:moveCharacter(Type, Name, 
-									{X1, Y1}, {X2, Y2} ) end);	
+									{trunc(X1), trunc(Y1)}, {trunc(X2), trunc(Y2)} ) end);	
 	{fight, {{Type1, Name1}, {Type2, Name2}, Location}} -> [];%TODO
 	{won_figth, {Type, Name, New_Location}} -> []%updateETS(State#state.database, Type, Name, New_Location, 0 )	
 

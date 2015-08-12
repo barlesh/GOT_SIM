@@ -41,4 +41,4 @@ sendStats(Start_Time,ETS_table) ->
 	[F|_] =ets:lookup(ETS_table, z_killed),
 	[G|_] =ets:lookup(ETS_table, resorection),
 	{_,NOW,_} = now(),
-	{statistics, {nw_created, A}, {ww_created, B}, {z_created, C}, {nw_killed, D}, {ww_killed, E}, {z_killed, F}, {resorection, G} , NOW -Start_Time } .
+	{statistics, {nw_created, A}, {ww_created, B}, {z_created, C}, {nw_killed, D}, {ww_killed, E}, {z_killed, F}, {resorection, G} , NOW -Start } .

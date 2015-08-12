@@ -4,7 +4,7 @@
 -module(mul_server).
 -author('BarLesh').
 
--export([start/0, run/0, test/1]).
+-compile(export_all).
 -include_lib("wx/include/wx.hrl").
 -define(max_x,(1000)).
 -define(max_y,(1000)).

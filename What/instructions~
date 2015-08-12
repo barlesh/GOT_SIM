@@ -5,6 +5,6 @@ c(char_gfsm).
 biggle_gen_server:start_link().
 להגיד לו לברוא עולם עם דמויות, כרגע רק עם שני לוחמים ואפס כל השאר:
 
-biggle_gen_server:create_world(biggle_gen_server, {1000, {{0,500},{0,500}}, 2,0,0,0,0}).
+biggle_gen_server:create_world(biggle_gen_server, {100, {{0,50},{0,50}}, 2,0,0,0,0}).
 
 אחרי זה אמור לשלוח אליך הודעות עדכון כבר

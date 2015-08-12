@@ -4,7 +4,7 @@
 -module(mul_server).
 -author('BarLesh').
 
--export([start/0, run/0, test/1]).
+-compile(export_all).
 -include_lib("wx/include/wx.hrl").
 -define(max_x,(1000)).
 -define(max_y,(1000)).
@@ -133,7 +133,7 @@ loop(State)->
 	%{death, {Name}} -> ets:delete(State#state.database, Name);
 	%{transform, {Original_Type, Trans_Type, Name, Location} } -> updateETS(State#state.database, Trans_Type, Name, Location, 0 );
 	%{movement, {Type, Name, {X1,Y1}, {X2,Y2} }  } -> spawn(fun()-> moveCharacter(Type, Name, 
-									{trunc(X1), trunc(Y1)}, {trunc(X2), trunc(Y2)} ) end);	
+									%{trunc(X1), trunc(Y1)}, {trunc(X2), trunc(Y2)} ) end);	
 	%{fight, {{Type1, Name1}, {Type2, Name2}, Location}} -> [];%TODO
 	%{won_figth, {Type, Name, New_Location}} -> updateETS(State#state.database, Type, Name, New_Location, 0 );
 	%internal use msgs
