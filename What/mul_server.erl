@@ -129,14 +129,16 @@ close_mull_server() ->
 loop(State)->
 	receive
 	%Character's "API" msgs to update simulations about events
-	{born, {Type, Name, Location} } -> updateETS(State#state.database, Type, Name, Location, 0 );
-	{movement, {Type, Name, {X1,Y1}, {X2,Y2} }  } -> spawn(fun()-> moveCharacter(Type, Name, 
-									{trunc(X1), trunc(Y1)}, {trunc(X2), trunc(Y2)} ) end);	
-	{death, {Name}} -> ets:delete(State#state.database, Name);
-	{fight, {{Type1, Name1}, {Type2, Name2}, Location}} -> [];%TODO
-	{won_figth, {Type, Name, New_Location}} -> updateETS(State#state.database, Type, Name, New_Location, 0 );
+	%{born, {Type, Name, Location} } -> updateETS(State#state.database, Type, Name, Location, 0 );
+	%{death, {Name}} -> ets:delete(State#state.database, Name);
+	%{transform, {Original_Type, Trans_Type, Name, Location} } -> updateETS(State#state.database, Trans_Type, Name, Location, 0 );
+	%{movement, {Type, Name, {X1,Y1}, {X2,Y2} }  } -> spawn(fun()-> moveCharacter(Type, Name, 
+									%{trunc(X1), trunc(Y1)}, {trunc(X2), trunc(Y2)} ) end);	
+	%{fight, {{Type1, Name1}, {Type2, Name2}, Location}} -> [];%TODO
+	%{won_figth, {Type, Name, New_Location}} -> updateETS(State#state.database, Type, Name, New_Location, 0 );
 	%internal use msgs
 	{update, {Type, Name,  New_Location, Angle} } -> updateETS(State#state.database, Type, Name, New_Location, Angle );
+	{remove, {Name}}-> ets:delete(State#state.database, Name);
 	show -> showSim(State);
 	stop -> close_mull_server();
 	%user interface msg
@@ -158,9 +160,9 @@ move(Key, Type) ->
 	Y1 =  random:uniform(700),
 	Y2 =  random:uniform(700),
 	case Type of
-	warrior-> multimedia_server!{movement, {warrior, Key, {X1,Y1}, {X2,Y2} } };
-	white_walker-> multimedia_server!{movement, {white_walker, Key, {X1,Y1}, {X2,Y2} } };
-	zombie -> multimedia_server!{movement, {zombie, Key, {X1,Y1}, {X2,Y2} } }
+	warrior-> server_gate!{movement, {warrior, Key, {X1,Y1}, {X2,Y2} } };
+	white_walker-> server_gate!{movement, {white_walker, Key, {X1,Y1}, {X2,Y2} } };
+	zombie -> server_gate!{movement, {zombie, Key, {X1,Y1}, {X2,Y2} } }
 	end.
 	
 test(N) -> 
