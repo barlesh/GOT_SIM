@@ -11,6 +11,8 @@ askForInput() ->
 	end.
 
 initServerGate()->spawn(fun()->server_gate:start() end).
+
+initStatistics() -> spawn(fun()-> statistics:start() end).
 %starts Graphical show of sumulation
 initSimGraphics() -> spawn(fun()-> mul_server:start() end).
 
@@ -35,6 +37,7 @@ start() ->
 	Parameters = askForInput(),
 	io:format("Params are ~p~n", [Parameters]),
 	initServerGate(),
+	initStatistics(),
 	initSimGraphics(),
 	initAdmins(Parameters),
 	statistics_server!start,

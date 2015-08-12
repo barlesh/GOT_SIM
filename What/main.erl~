@@ -34,7 +34,7 @@ start() ->
 	%get parameters from user
 	Parameters = askForInput(),
 	io:format("Params are ~p~n", [Parameters]),
-	initServerGate(),server_gate
+	initServerGate(),
 	initSimGraphics(),
 	initAdmins(Parameters),
 	statistics_server!start,

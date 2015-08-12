@@ -89,7 +89,8 @@ show(DC,ETS_table, Key, NW_IMG, WW_IMG, Z_IMG, CORPSE_IMG) ->
 	case Type of 
 		warrior -> Temp =  wxImage:rotate(NW_IMG,Angle, Pos);
 		white_walker -> Temp =  wxImage:rotate(WW_IMG,Angle, Pos);
-		zombie -> Temp =  wxImage:rotate(Z_IMG,Angle, Pos)
+		zombie -> Temp =  wxImage:rotate(Z_IMG,Angle, Pos);
+		body -> Temp =  wxImage:rotate(CORPSE_IMG,Angle, Pos)
 	end,
 	Bitmap=wxBitmap:new(Temp),
 	wxDC:drawBitmap(DC, Bitmap, Pos),
