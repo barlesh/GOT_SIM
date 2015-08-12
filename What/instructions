@@ -1,0 +1,10 @@
+לקמפל: 
+c(biggle_gen_server).
+c(char_gfsm).
+להתחיל שרת ביגל מאסטר: 
+biggle_gen_server:start_link().
+להגיד לו לברוא עולם עם דמויות, כרגע רק עם שני לוחמים ואפס כל השאר:
+
+biggle_gen_server:create_world(biggle_gen_server, {100, {{0,50},{0,50}}, 2,0,0,0,0}).
+
+אחרי זה אמור לשלוח אליך הודעות עדכון כבר

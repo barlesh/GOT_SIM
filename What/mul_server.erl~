@@ -145,7 +145,7 @@ loop(State)->
 	#wx{id=?ABOUT, event=#wxCommand{type=command_menu_selected}} -> io:format("OPEN ABOUT~n"); %TODO
 	#wx{event=#wxClose{}} -> close_mull_server()
 	end,
-	loop(State).
+	loop(Frame, Panel, NW_IMG, WW_IMG, Z_IMG, CORPSE_IMG ,BG,ETS_table).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
