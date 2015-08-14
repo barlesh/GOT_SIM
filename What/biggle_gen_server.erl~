@@ -17,6 +17,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
+-export([run/0]).
+
 -define(SERVER, ?MODULE).
 -define(min_char_distance, 0.2).
 
@@ -247,7 +249,7 @@ generate_fight_update({Attackee_pid, Attacker_pid}, State)->
 	{fight, {{Type1, Attackee_pid}, {Type2, Attacker_pid}, Location}}. 
 
 print_ets(Ets_table)->
-	L=[{Type,Location2, Pid} || {_,{_,Type,Pid,Location2}}<-ets:tab2list(Ets_table)],
+	L=[{Type,Location2, Pid} || {_,{_,Type,Pid,Location2}}<-ets:tab2list(Ets_table)].
 	%io:format("Printing all ets:~n"),
 	%io:format("~p~n",[L]).	
 
@@ -361,4 +363,9 @@ int_make_char_record(Board_size, Type, Location) ->
 	multimedia_update({born, {Type, Pid, Location}}),
 	Char.  
 
+
+
+run(W,WW,Z)-> 
+	start_link(),
+	create_world(biggle_gen_server, {1000, {{0,200},{0,200}}, W,WW,Z,0,0}).
 

@@ -17,6 +17,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
+-export([run/3]).
+
 -define(SERVER, ?MODULE).
 -define(min_char_distance, 0.2).
 
@@ -361,4 +363,9 @@ int_make_char_record(Board_size, Type, Location) ->
 	multimedia_update({born, {Type, Pid, Location}}),
 	Char.  
 
+
+
+run(W,WW,Z)-> 
+	start_link(),
+	create_world(biggle_gen_server, {1000, {{0,200},{0,200}}, W,WW,Z,0,0}).
 

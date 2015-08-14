@@ -8,7 +8,7 @@
 -include_lib("wx/include/wx.hrl").
 -define(max_x,(1000)).
 -define(max_y,(1000)).
--define(REFRESH_TIME, 30).
+-define(REFRESH_TIME, 80).
 -define(STEP, 10).
 -define(ABOUT,?wxID_ABOUT).
 -define(EXIT,?wxID_EXIT).
@@ -129,17 +129,13 @@ close_mull_server() ->
 %f. (user) statistics window TODO
 loop(State)->
 	receive
-	%Character's "API" msgs to update simulations about events
-	%{born, {Type, Name, Location} } -> updateETS(State#state.database, Type, Name, Location, 0 );
-	%{death, {Name}} -> ets:delete(State#state.database, Name);
-	%{transform, {Original_Type, Trans_Type, Name, Location} } -> updateETS(State#state.database, Trans_Type, Name, Location, 0 );
-	%{movement, {Type, Name, {X1,Y1}, {X2,Y2} }  } -> spawn(fun()-> moveCharacter(Type, Name, 
-									%{trunc(X1), trunc(Y1)}, {trunc(X2), trunc(Y2)} ) end);	
-	%{fight, {{Type1, Name1}, {Type2, Name2}, Location}} -> [];%TODO
-	%{won_figth, {Type, Name, New_Location}} -> updateETS(State#state.database, Type, Name, New_Location, 0 );
-	%internal use msgs
-	{update, {Type, Name,  New_Location, Angle} } -> updateETS(State#state.database, Type, Name, New_Location, Angle );
+	{init, {Type, Name, Location} } -> updateETS(State#state.database, Type, Name, Location, 0 );
+	{update, {Type, Name,  New_Location, Angle} } -> L = ets:lookup(State#state.database, Name),
+					if length(L) =:= 0 -> ignored;
+					true -> updateETS(State#state.database, Type, Name, New_Location, Angle ) end; 
 	{remove, {Name}}-> ets:delete(State#state.database, Name);
+	{A,B,C,D} -> Text="Warrios:"++integer_to_list(A)++"			Zombies:"++integer_to_list(B)++"			White Walkers:"++integer_to_list(C)++"			resorections"++integer_to_list(D),
+	wxFrame:setStatusText(State#state.frame,Text);
 	show -> showSim(State);
 	stop -> close_mull_server();
 	%user interface msg

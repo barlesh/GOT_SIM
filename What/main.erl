@@ -6,6 +6,7 @@
 %this function start GUI that ssk from user the simulation's parameters.
 askForInput() ->
 	spawn(fun()-> menu:start() end),
+	io:format("at main's askForInput.~n"),
 	receive
 	Param-> Param
 	end.
@@ -24,10 +25,12 @@ initAdmins(Parameters)->
 %his function is called when simulation is stopped. it send killing signal to all Beagleboards's Admins, wait for confermation from all of them, then send killing signal to SimGrahics GUI, and then killes statistics
 stop()->
 	killAdmins(), 
+	killGate(),
 	killSimGraphics(),
 	killStatistics(),
 	exit(-1). 
-	
+
+run() -> spawn(fun()->start() end).
 %this function start GUI and ask from user Simulation's parameter.
 start() ->
 	register(main, self()),
@@ -37,20 +40,23 @@ start() ->
 	Parameters = askForInput(),
 	io:format("Params are ~p~n", [Parameters]),
 	initServerGate(),
-	initStatistics(),
+	Stat_Pid = initStatistics(),
 	initSimGraphics(),
 	initAdmins(Parameters),
-	statistics_server!start,
+	Stat_Pid!start,
+	io:format("main pass seng to stats~n"),
 	%wit for command to end simulation (can come from either simulation GUI window or Terminal
 	receive
+		check -> io:format("main is ok.~n");
 		{stop, multimedia_server} -> 	io:format("Sim stopping because of multimedia server~n"),
 						stop();
-		{stop, terminal} -> 		io:format("Sim stopping because of command from Terminal~n"),
+		stop -> 		io:format("Sim stopping because of command from Terminal~n"),
 						stop()
 	end,
 	start().
 	
 
 killAdmins()-> [].
-killSimGraphics()-> mul_server!stop.
+killGate() -> server_gate!stop.
+killSimGraphics()-> multimedia_server!stop.
 killStatistics()-> statistics_server!stop.
