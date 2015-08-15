@@ -36,11 +36,11 @@ loop(Start_Time,ETS_table) ->
 	{zombie, created}  -> [{z_created, N}] = ets:lookup(ETS_table, z_created), ets:insert(ETS_table,{nw_created, N+1} ),
 				[{z, M}] = ets:lookup(ETS_table, z), ets:insert(ETS_table,{z, M+1} );
 	{warrior, killed}  -> [{nw_killed, N}] = ets:lookup(ETS_table, nw_killed), ets:insert(ETS_table,{nw_killed, N+1} ),
-				[{nw, M}] = ets:lookup(ETS_table, nw), ets:insert(ETS_table,{nw, erlang:max(M-1, 0)} );
+				[{nw, M}] = ets:lookup(ETS_table, nw), ets:insert(ETS_table,{nw, M-1} );
 	{white_walker, killed}  -> [{ww_killed, N}] = ets:lookup(ETS_table, ww_killed), ets:insert(ETS_table,{ww_killed, N+1} ),
-				[{ww, M}] = ets:lookup(ETS_table, ww), ets:insert(ETS_table,{ww, erlang:max(M-1, 0)} );
+				[{ww, M}] = ets:lookup(ETS_table, ww), ets:insert(ETS_table,{ww,M-1} );
 	{zombie, killed}  -> [{z_killed, N}] = ets:lookup(ETS_table, z_killed), ets:insert(ETS_table,{z_killed, N+1} ),
-				[{z, M}] = ets:lookup(ETS_table, z), ets:insert(ETS_table,{z, erlang:max(M-1, 0)} );
+				[{z, M}] = ets:lookup(ETS_table, z), ets:insert(ETS_table,{z, M-1} );
 	{resorection}-> [{resorection, N}] = ets:lookup(ETS_table, resorection), ets:insert(ETS_table,{resorection, N+1} );
 
 	{From, stat_request} -> From!sendStats(Start_Time,ETS_table);

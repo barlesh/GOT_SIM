@@ -6,12 +6,13 @@
 
 start() ->
 	register(server_gate, self() ),
-	loop(#state{all_created = 0}).
+	loop(0).
+
 
 loop(State)->
 	receive
-	done when State#state.all_created =:= 3 -> loop2();
-	done -> X = State#state.all_created,New_State=State#state{all_created=X+1};
+	done when State =:= 3 -> loop2();
+	done -> X = loop(State+1);
 	{stats_update, NW_C,WW_C,Z_C,RES} -> multimedia_server!{status_text,NW_C,WW_C,Z_C,RES}
 	after 0 -> server()
 	end, loop(State).
@@ -48,7 +49,7 @@ server()->
 								end;
 	{movement, {Type, Name, {X1,Y1}, {X2,Y2} }  } -> spawn(fun()-> mul_server:moveCharacter(Type, Name, 
 									{trunc(X1), trunc(Y1)}, {trunc(X2), trunc(Y2)} ) end);	
-	{fight, {{Type1, Name1}, {Type2, Name2}, Location}} -> [];
+	{fight, {{Type1, Name1}, {Type2, Name2}, Location}} -> mul_server:drewFight(Location);
 	{won_figth, {Type, Name, New_Location}} ->[]; %updateETS(State#state.database, Type, Name, New_Location, 0 )
 	stop -> exit(-1)	
 	end.

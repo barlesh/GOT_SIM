@@ -4,7 +4,7 @@
 -compile(export_all).
 
 -define(NUM_OF_BIGGLES, 4).
--define(BOARD_SIZE, 1000).
+-define(BOARD_SIZE, 1300).
 -define(NUM_TREES, 80).
 -define(NUM_ROCKES, 30).
 
@@ -16,11 +16,11 @@ askForInput() ->
 	Param-> Param
 	end.
 
-initServerGate()->  Pid = spawn(fun()->server_gate:start() end), monitor(process,Pid), Pid.
+initServerGate()->  Pid = spawn(fun()->server_gate:start() end), monitor(process,Pid).
 
-initStatistics(Parameters) -> spawn(fun()-> statistics:start(Parameters) end).
+initStatistics(Parameters) -> Pid = spawn(fun()-> statistics:start(Parameters) end), Ref = monitor(process, Pid), {Pid, Ref}.
 %starts Graphical show of sumulation
-initSimGraphics(BOARD_SIZE) -> spawn(fun()-> mul_server:start(BOARD_SIZE) end).
+initSimGraphics(BOARD_SIZE) -> Pid = spawn(fun()-> mul_server:start(BOARD_SIZE) end), monitor(process, Pid).
 
 %initiate Admins processes at remote Controllers
 initMaster({NW,WW,Z})->
@@ -43,20 +43,28 @@ start() ->
 	register(main, self()),
 	%get parameters from user
 	Parameters = askForInput(),
-	initServerGate(),
-	Stat_Pid = initStatistics(Parameters),
-	initSimGraphics(?BOARD_SIZE),
+	Server_Gate_Monitor = initServerGate(),
+	{Stat_Pid, Stat_Monitor} = initStatistics(Parameters),
+	Graphic_Monitor = initSimGraphics(?BOARD_SIZE),
 	Stat_Pid!start,
 	initMaster(Parameters),
+	loop(Parameters, Server_Gate_Monitor, Stat_Monitor, Graphic_Monitor).
+	
+loop(Parameters, Server_Gate_Monitor, Stat_Monitor, Graphic_Monitor) -> 
 	%wit for command to end simulation (can come from either simulation GUI window or Terminal
 	receive
 		check -> io:format("main is ok.~n");
+		{'DOWN', Server_Gate_Monitor,_,_,_} -> Ref = initServerGate(), 
+								loop(Parameters, Ref, Stat_Monitor, Graphic_Monitor);
+		{'DOWN', Stat_Monitor, _,_,_} -> Ref = initStatistics(Parameters), 
+								loop(Parameters,Server_Gate_Monitor, Ref, Graphic_Monitor);
+		{'DOWN', Graphic_Monitor, _,_,_} -> Ref = initSimGraphics(?BOARD_SIZE),
+							loop(Parameters, Server_Gate_Monitor, Stat_Monitor, Ref);
 		{stop, multimedia_server} -> 	io:format("Sim stopping because of multimedia server~n"),
 						stop();
 		stop -> 		io:format("Sim stopping because of command from Terminal~n"),
 						stop()
-	end,
-	start().
+	end.
 	
 
 killAdmins()-> biggle_gen_server:stop(biggle_gen_server,normal).

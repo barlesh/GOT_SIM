@@ -6,12 +6,13 @@
 
 start() ->
 	register(server_gate, self() ),
-	loop(#state{all_created = 0}).
+	loop(0).
+
 
 loop(State)->
 	receive
-	done when State#state.all_created =:= 3 -> loop2();
-	done -> X = State#state.all_created,New_State=State#state{all_created=X+1};
+	done when State =:= 3 -> loop2();
+	done -> X = loop(State+1);
 	{stats_update, NW_C,WW_C,Z_C,RES} -> multimedia_server!{status_text,NW_C,WW_C,Z_C,RES}
 	after 0 -> server()
 	end, loop(State).

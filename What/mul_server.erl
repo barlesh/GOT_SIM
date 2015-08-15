@@ -8,7 +8,7 @@
 -include_lib("wx/include/wx.hrl").
 -define(REFRESH_TIME, 80).
 -define(STEP, 10).
--define(ABOUT,?wxID_ABOUT).
+-define(STATS,?wxID_STATS).
 -define(EXIT,?wxID_EXIT).
 
 -record(state, {frame, panel, nw_img, ww_img, z_img, corpse_img, sparks_img, tree1, tree2, tree3, tree4, tree5, bg, database}). 
@@ -20,13 +20,13 @@ setFrame(Frame) ->
 	MenuBar = wxMenuBar:new(),
 	File = wxMenu:new(),
 	Help = wxMenu:new(),
-	wxMenu:append(Help,?ABOUT,"About GOT SIM"),
+	wxMenu:append(Help,?STATS,"Statistics of GOT SIM"),
 	wxMenu:append(File,?EXIT,"Quit"),
 	wxMenuBar:append(MenuBar,File,"&File"),
-	wxMenuBar:append(MenuBar,Help,"&Help"),
+	wxMenuBar:append(MenuBar,Help,"&Statistics"),
  	wxFrame:setMenuBar(Frame,MenuBar),
 	wxFrame:createStatusBar(Frame),
-  	wxFrame:setStatusText(Frame,"Welcome to wxErlang"),
+  	wxFrame:setStatusText(Frame,"GOT Simulator"),
   	wxFrame:connect(Frame, command_menu_selected),
   	wxFrame:connect(Frame, close_window).
 start(BOARD_SIZE)->
@@ -39,7 +39,7 @@ start(BOARD_SIZE)->
 	Image = wxImage:new("/home/barlesh/Erworkspace/FinalProject/bar/nw.png"),
 	Image2 = wxImage:new("/home/barlesh/Erworkspace/FinalProject/bar/ww.png"),
 	Image3 = wxImage:new("/home/barlesh/Erworkspace/FinalProject/bar/z.png"),
-	Image4 = wxImage:new("/home/barlesh/Erworkspace/FinalProject/snir/car.png"),
+	Image4 = wxImage:new("/home/barlesh/Erworkspace/FinalProject/bar/corps.png"),
 	Image5 = wxImage:new("/home/barlesh/Erworkspace/FinalProject/bar/tree1.png"),
 	Image6 = wxImage:new("/home/barlesh/Erworkspace/FinalProject/bar/tree2.png"),
 	Image7 = wxImage:new("/home/barlesh/Erworkspace/FinalProject/bar/tree3.png"),
@@ -78,9 +78,9 @@ moveCharacter(Type, Name,{X_Curr, Y_Curr}, {X_Dest, Y_Dest} )->
 	stop -> exit(-1)
 	after ?REFRESH_TIME ->  X = eval(X_Curr, X_Dest), Y = eval(Y_Curr, Y_Dest),
 				%TODO 
-				%if (X-X_Curr =:= 0) -> Angle = 0.5*math:pi();
-				%true -> Angle = math:tan(Y-Y_Curr, X-X_Curr ) * (mathi:pi()/180) end, 
-				Angle =0,
+				if (X-X_Curr =:= 0) -> Angle = 0.5*math:pi();
+				true -> Angle = math:tan(Y-Y_Curr/ X-X_Curr ) * (math:pi()/180) end, 
+				%Angle =0,
 				multimedia_server! {update, self(), {Type, Name, {X,Y}, Angle } },
 				moveCharacter(Type, Name, {X,Y}, {X_Dest, Y_Dest} )
 	end.
@@ -102,11 +102,11 @@ show(DC,ETS_table, Key, NW_IMG, WW_IMG, Z_IMG, CORPSE_IMG, SPARK_IMG, TREE1, TRE
 		zombie -> Temp =  wxImage:rotate(Z_IMG,Angle, Pos);
 		body -> Temp =  wxImage:rotate(CORPSE_IMG,Angle, Pos);
 		sparks -> Temp = wxImage:rotate(SPARK_IMG,Angle, Pos);
-		tree1 ->  Temp=xwImage:rotate(TREE1, Angle , Pos);
-		tree2 -> Temp = xwImage:rotate(TREE2, Angle , Pos);
-		tree3 -> Temp = xwImage:rotate(TREE3, Angle , Pos);
-		tree4 -> Temp = xwImage:rotate(TREE4, Angle , Pos);
-		tree5 -> Temp = xwImage:rotate(TREE5, Angle , Pos)
+		tree1 ->  io:format("at mul_server:show. IMG is:~p~n", [TREE1]), Temp = xwImage:rotate(TREE1, Angle , Pos);
+		tree2 -> io:format("at mul_server:show. Angle is:~p~n", [TREE2]), Temp = xwImage:rotate(TREE2, Angle , Pos);
+		tree3 -> io:format("at mul_server:show. Angle is:~p~n", [TREE3]), Temp = xwImage:rotate(TREE3, Angle , Pos);
+		tree4 -> io:format("at mul_server:show. Angle is:~p~n", [TREE4]), Temp = xwImage:rotate(TREE4, Angle , Pos);
+		tree5 -> io:format("at mul_server:show. Angle is:~p~n", [TREE5]), Temp = xwImage:rotate(TREE5, Angle , Pos)
 	end,
 	Bitmap=wxBitmap:new(Temp),
 	wxDC:drawBitmap(DC, Bitmap, Pos),
@@ -175,7 +175,7 @@ loop(State)->
 	%user interface msg
 	 #wx{id=?EXIT, event=#wxCommand{type=command_menu_selected}} -> io:format("trying to close~n"),
     		wxWindow:close(State#state.database,[]), close_mull_server();
-	#wx{id=?ABOUT, event=#wxCommand{type=command_menu_selected}} -> io:format("OPEN ABOUT~n"); %TODO
+	#wx{id=?STATS, event=#wxCommand{type=command_menu_selected}} -> io:format("OPEN ABOUT~n"); %TODO
 	#wx{event=#wxClose{}} -> close_mull_server()
 	end,
 	loop(State).
