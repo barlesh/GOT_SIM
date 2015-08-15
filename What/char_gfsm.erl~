@@ -30,9 +30,9 @@
 -define(min_char_distance,   2). 
 -define(idle_factor,      1000).
 -define(animation_timeout,  300).
--define(body_timeout,    30000).
+-define(body_timeout,    8000).
 
--record(state, {biggle, board_size, type, location, pid, radius=30, step_size=15, attackee, attacker, bodies}).
+-record(state, {biggle, board_size, type, location, pid, radius=30, step_size=80, attackee, attacker, bodies}).
 										 %attacker=pid, bodies for ww. 
 %%%===================================================================
 %%% API
@@ -222,7 +222,8 @@ attacked(Event, Data)->
 	{next_state, idle, Data, timeout(idle)}.
 
 body(timeout, State) ->
-	%%io:format("Body ~p died of decay.~n",[State#state.pid]),	
+	io:format("Body ~p died of decay.~n",[State#state.pid]),
+	biggle_gen_server:char_transition(State#state.biggle,{dead}),	
 	{next_state, dead, State, 0};
 
 body({battle_outcome, Result, Other_pid}, State)->

@@ -47,9 +47,9 @@ make_window() ->
  
 %% create widgets
 %% the order entered here does not control appearance
-    T1001 = wxTextCtrl:new(Panel, 1001,[{value, "20"}]), %set default value
+    T1001 = wxTextCtrl:new(Panel, 1001,[{value, "40"}]), %set default value
     T1002 = wxTextCtrl:new(Panel, 1001,[{value, "5"}]), %set default value
-    T1003 = wxTextCtrl:new(Panel, 1001,[{value, "10"}]), %set default value
+    T1003 = wxTextCtrl:new(Panel, 1001,[{value, "70"}]), %set default value
     B101  = wxButton:new(Panel, 101, [{label, "&Start Simulation"}]),
     B102  = wxButton:new(Panel, ?wxID_EXIT, [{label, "C&ancel"}]),
  

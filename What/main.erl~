@@ -3,6 +3,11 @@
 -author('BarLesh').
 -compile(export_all).
 
+-define(NUM_OF_BIGGLES, 4).
+-define(BOARD_SIZE, 1000).
+-define(NUM_TREES, 80).
+-define(NUM_ROCKES, 30).
+
 %this function start GUI that ssk from user the simulation's parameters.
 askForInput() ->
 	spawn(fun()-> menu:start() end),
@@ -11,16 +16,18 @@ askForInput() ->
 	Param-> Param
 	end.
 
-initServerGate()->spawn(fun()->server_gate:start() end).
+initServerGate()->  Pid = spawn(fun()->server_gate:start() end), monitor(process,Pid), Pid.
 
-initStatistics() -> spawn(fun()-> statistics:start() end).
+initStatistics(Parameters) -> spawn(fun()-> statistics:start(Parameters) end).
 %starts Graphical show of sumulation
-initSimGraphics() -> spawn(fun()-> mul_server:start() end).
+initSimGraphics(BOARD_SIZE) -> spawn(fun()-> mul_server:start(BOARD_SIZE) end).
 
 %initiate Admins processes at remote Controllers
-initAdmins(Parameters)->
-	%rpc mutherfucker
-	[].
+initMaster({NW,WW,Z})->
+	%biggle_master:start_link(?NUM_OF_BIGGLES),
+	%biggle_master:start_biggles(biggle_master, {?BOARD_SIZE, NW,WW,Z, ?NUM_TREES, ?NUM_ROCKES}).
+	biggle_gen_server:start_link(),
+	biggle_gen_server:create_world(biggle_gen_server, {?BOARD_SIZE, {{0,500},{0,500}}, NW,WW,Z,0,0}).
 
 %his function is called when simulation is stopped. it send killing signal to all Beagleboards's Admins, wait for confermation from all of them, then send killing signal to SimGrahics GUI, and then killes statistics
 stop()->
@@ -34,17 +41,13 @@ run() -> spawn(fun()->start() end).
 %this function start GUI and ask from user Simulation's parameter.
 start() ->
 	register(main, self()),
-	%init Statistics Server
-	%spawn(fun()-> statistics:start() end),
 	%get parameters from user
 	Parameters = askForInput(),
-	io:format("Params are ~p~n", [Parameters]),
 	initServerGate(),
-	Stat_Pid = initStatistics(),
-	initSimGraphics(),
-	initAdmins(Parameters),
+	Stat_Pid = initStatistics(Parameters),
+	initSimGraphics(?BOARD_SIZE),
 	Stat_Pid!start,
-	io:format("main pass seng to stats~n"),
+	initMaster(Parameters),
 	%wit for command to end simulation (can come from either simulation GUI window or Terminal
 	receive
 		check -> io:format("main is ok.~n");
@@ -56,7 +59,7 @@ start() ->
 	start().
 	
 
-killAdmins()-> [].
+killAdmins()-> biggle_gen_server:stop(biggle_gen_server,normal).
 killGate() -> server_gate!stop.
 killSimGraphics()-> multimedia_server!stop.
 killStatistics()-> statistics_server!stop.
