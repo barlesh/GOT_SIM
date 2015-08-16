@@ -3,7 +3,7 @@
 -author('BarLesh').
 
 start({NW,WW,Z}) -> 
-	register(statistics_server, self()),
+	%register(statistics_server, self()),
 	ETS_table = ets:new(statistics, []),
 	ets:insert(ETS_table,{nw_created, 0} ),
 	ets:insert(ETS_table,{ww_created, 0} ),
@@ -24,6 +24,19 @@ waitForStart(ETS_table)->
 	{_,Start_Time,_}=now(),
 	loop(Start_Time,ETS_table).
 
+showStats(ETS_table,Start_Time)->
+	[A|_] =ets:lookup(ETS_table, nw_created),
+	[B|_] =ets:lookup(ETS_table, ww_created),
+	[C|_] =ets:lookup(ETS_table, z_created),
+	[D|_] =ets:lookup(ETS_table, nw_killed),
+	[E|_] =ets:lookup(ETS_table, ww_killed),
+	[F|_] =ets:lookup(ETS_table, z_killed),
+	[G|_] =ets:lookup(ETS_table, resorection),
+	{_,_,T} = now(),
+	H = (T-Start_Time) / 1000,
+	H1 = trunc(H),
+	spawn(fun()-> stat_window:start( {A,B,C,D,E,F,G,{time_Elepsed,H1} })  end) .
+
 loop(Start_Time,ETS_table) ->
 	[{_,A}] = ets:lookup(ETS_table, nw), [{_,B}] = ets:lookup(ETS_table, ww), [{_,C}] = ets:lookup(ETS_table, z), [{_,D}] = ets:lookup(ETS_table,resorection ),
 	server_gate! {stats_update, A,B,C,D},	%%multimadia server update of current characters numbers
@@ -43,9 +56,10 @@ loop(Start_Time,ETS_table) ->
 				[{z, M}] = ets:lookup(ETS_table, z), ets:insert(ETS_table,{z, M-1} );
 	{resorection}-> [{resorection, N}] = ets:lookup(ETS_table, resorection), ets:insert(ETS_table,{resorection, N+1} );
 
-	{From, stat_request} -> From!sendStats(Start_Time,ETS_table);
+	%{From, stat_request} -> From!sendStats(Start_Time,ETS_table);
 	check -> io:format("stats2 is ok.~n");
 	print -> print(ETS_table);
+	stat_show -> showStats(ETS_table, Start_Time);
 	stop -> %TODO - close ets
 		exit(-1)
 	end, 
@@ -62,20 +76,8 @@ print(ETS_table)->
 	[{_,H}] = ets:lookup(ETS_table, nw),
 	[{_,I}] = ets:lookup(ETS_table, ww),
 	[{_,J}] = ets:lookup(ETS_table, z),
-	io:format("warrior created:~p, white_walker created:~p, zombie created~p, resorections:~p~n",
-			 [A,B,C,D]),
-	io:format("warrior killed:~p, white_walker killed:~p, zombie killed~p, ~n",
-			 [E,F,G ]),
-	io:format("warrior Alive:~p, white_walker Alive:~p, zombie Alive~p, ~n",
-			 [H,I,J ]).
-%return tuple of indicator (statistics), tuples of couples {category, counter}, time elepsed from start of simulation 
-sendStats(Start_Time,ETS_table) ->
-	[A|_] =ets:lookup(ETS_table, nw_created),
-	[B|_] =ets:lookup(ETS_table, ww_created),
-	[C|_] =ets:lookup(ETS_table, z_created),
-	[D|_] =ets:lookup(ETS_table, nw_killed),
-	[E|_] =ets:lookup(ETS_table, ww_killed),
-	[F|_] =ets:lookup(ETS_table, z_killed),
-	[G|_] =ets:lookup(ETS_table, resorection),
-	{_,NOW,_} = now(),
-	{statistics, {nw_created, A}, {ww_created, B}, {z_created, C}, {nw_killed, D}, {ww_killed, E}, {z_killed, F}, {resorection, G} , NOW -Start_Time } .
+	io:format("warrior created:~p, white_walker created:~p, zombie created~p, resorections:~p~n", [A,B,C,D]),
+	io:format("warrior killed:~p, white_walker killed:~p, zombie killed~p, ~n",[E,F,G ]),
+	io:format("warrior Alive:~p, white_walker Alive:~p, zombie Alive~p, ~n", [H,I,J ]).
+
+

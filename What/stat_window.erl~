@@ -9,7 +9,7 @@
 
 make_window(Param) ->
     Server = wx:new(),
-    Frame = wxFrame:new(Server, -1, "GOT Sim Statistics", [{size,{600, 200}}]),
+    Frame = wxFrame:new(Server, -1, "GOT Sim Statistics", [{size,{850, 350}}]),
     Panel  = wxPanel:new(Frame),
     %% create widgets
 %% the order entered here does not control appearance
@@ -26,28 +26,38 @@ make_window(Param) ->
  
 %% Note that the widget is added using the VARIABLE, not the ID.
 %% The order they are added here controls appearance.
- 
-  {W_CREATED, WW_CREATED, Z_CREATED, W_KILLED, WW_KILLED, Z_KILLED, RESORECTION, TIME_ELEPSED} = Param,
+ io:format("Param is:~p~n", [Param]),
+
+  {{_,W_CREATED}, {_,WW_CREATED}, {_,Z_CREATED}, {_,W_KILLED}, {_,WW_KILLED}, {_,Z_KILLED}, {_,RESORECTION}, {_,TIME_ELEPSED} } = Param,
+%io:format("Time with trunc is:~p~n", [trunc(statistics_server)]),
   T1 = "Warriors Created:" ++ integer_to_list(W_CREATED),
-  T2 = "White Walkers Created:" ++ integer_to_list(WW_CREATED),
-  T3 = "Zombies Created:" ++ integer_to_list(Z_CREATED),
-  T4 = "Warriors Killed:" ++ integer_to_list(W_KILLED),
-  T5 = "White Walkers Killed:" ++ integer_to_list(WW_KILLED),
-  T6 = "Zombies Killed:" ++ integer_to_list(Z_KILLED),
-  T7 = "num of resorections:" ++ integer_to_list(RESORECTION),
-  T8 = "Time Elepsed:" ++ integer_to_list(TIME_ELEPSED),
+  SPACE = " ",
+  T2 = "~nWhite Walkers Created:" ++ integer_to_list(WW_CREATED),
+  T3 = "~nZombies Created:" ++ integer_to_list(Z_CREATED),
+  T4 = "~nWarriors Killed:" ++ integer_to_list(W_KILLED),
+  T5 = "~nWhite Walkers Killed:" ++ integer_to_list(WW_KILLED),
+  T6 = "~nZombies Killed:" ++ integer_to_list(Z_KILLED),
+  T7 = "~nnum of resorections:" ++ integer_to_list(RESORECTION),
+  T8 = "~nTime Elepsed:" ++ integer_to_list(TIME_ELEPSED),
   Texts = [wxStaticText:new(Panel, 1, T1, []),
-	wxStaticText:new(Panel, 2, T2 ,[]),
-	wxStaticText:new(Panel, 3, T3 ,[]), 
-	wxStaticText:new(Panel, 4, T4,[]),
-	wxStaticText:new(Panel, 5, T5,[]),
-	wxStaticText:new(Panel, 6, T6,[]),
-	wxStaticText:new(Panel, 7, T7,[]),
-	wxStaticText:new(Panel, 8, T8,[])],
+	wxStaticText:new(Panel, 2, SPACE ,[]),
+	wxStaticText:new(Panel, 3, T2 ,[]),
+	wxStaticText:new(Panel, 4, SPACE ,[]),
+	wxStaticText:new(Panel, 5, T3 ,[]), 
+	wxStaticText:new(Panel, 6, SPACE ,[]),
+	wxStaticText:new(Panel, 7, T4,[]),
+	wxStaticText:new(Panel, 8, SPACE ,[]),
+	wxStaticText:new(Panel, 9, T5,[]),
+	wxStaticText:new(Panel, 10, SPACE ,[]),
+	wxStaticText:new(Panel, 11, T6,[]),
+	wxStaticText:new(Panel, 12, SPACE ,[]),
+	wxStaticText:new(Panel, 13, T7,[]),
+	wxStaticText:new(Panel, 14, SPACE ,[]),
+	wxStaticText:new(Panel, 15, T8,[])],
 
     [ wxSizer:add(TextSizer, Text, []) || Text <- Texts] ,
     wxSizer:add(MainSizer, TextSizer, []),
-    wxSizer:addSpacer(OuterSizer, 30), % space
+    wxSizer:addSpacer(OuterSizer, 7), % space
 
     wxSizer:add(ButtonSizer, B101,  []),
     wxSizer:add(MainSizer, ButtonSizer, []),
@@ -57,7 +67,7 @@ make_window(Param) ->
     wxSizer:addSpacer(OuterSizer, 60), % spacer
 
     %set image
-    Canvas = wxPanel:new(Panel, [{size, {200, 170}}]),
+    Canvas = wxPanel:new(Panel, [{size, {500, 370}}]),
 
     wxPanel:connect(Canvas, paint, []),
     %wxPanel:connect(Canvas, size),
@@ -88,8 +98,8 @@ exitStatWindow(Frame) -> %TODO
 	exit(-1).
 
 start(Param) ->
-    MyPid = self(),
-    register(stat_window,MyPid),
+    %MyPid = self(),
+    %register(stat_window,MyPid),
     State = make_window(Param),
     loop (State).
 

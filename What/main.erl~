@@ -18,7 +18,8 @@ askForInput() ->
 
 initServerGate()->  Pid = spawn(fun()->server_gate:start() end), monitor(process,Pid).
 
-initStatistics(Parameters) -> Pid = spawn(fun()-> statistics:start(Parameters) end), Ref = monitor(process, Pid), {Pid, Ref}.
+initStatistics(Parameters) -> Pid = spawn(fun()-> statistics:start(Parameters) end), 
+				register(statistics_server, Pid) , Ref = monitor(process, Pid), {Pid, Ref}.
 %starts Graphical show of sumulation
 initSimGraphics(BOARD_SIZE) -> Pid = spawn(fun()-> mul_server:start(BOARD_SIZE) end), monitor(process, Pid).
 
@@ -46,7 +47,7 @@ start() ->
 	Server_Gate_Monitor = initServerGate(),
 	{Stat_Pid, Stat_Monitor} = initStatistics(Parameters),
 	Graphic_Monitor = initSimGraphics(?BOARD_SIZE),
-	Stat_Pid!start,
+	statistics_server!start,
 	initMaster(Parameters),
 	loop(Parameters, Server_Gate_Monitor, Stat_Monitor, Graphic_Monitor).
 	
@@ -54,16 +55,13 @@ loop(Parameters, Server_Gate_Monitor, Stat_Monitor, Graphic_Monitor) ->
 	%wit for command to end simulation (can come from either simulation GUI window or Terminal
 	receive
 		check -> io:format("main is ok.~n");
-		{'DOWN', Server_Gate_Monitor,_,_,_} -> Ref = initServerGate(), 
-								loop(Parameters, Ref, Stat_Monitor, Graphic_Monitor);
-		{'DOWN', Stat_Monitor, _,_,_} -> Ref = initStatistics(Parameters), 
-								loop(Parameters,Server_Gate_Monitor, Ref, Graphic_Monitor);
-		{'DOWN', Graphic_Monitor, _,_,_} -> Ref = initSimGraphics(?BOARD_SIZE),
-							loop(Parameters, Server_Gate_Monitor, Stat_Monitor, Ref);
-		{stop, multimedia_server} -> 	io:format("Sim stopping because of multimedia server~n"),
-						stop();
-		stop -> 		io:format("Sim stopping because of command from Terminal~n"),
-						stop()
+		%{'DOWN', Server_Gate_Monitor,_,_,_} -> Ref = initServerGate(), 
+		%						loop(Parameters, Ref, Stat_Monitor, Graphic_Monitor);
+		%{'DOWN', Stat_Monitor,_,_,_} -> Ref = initStatistics(Parameters), 
+		%						loop(Parameters,Server_Gate_Monitor, Ref, Graphic_Monitor);
+		%{'DOWN', Graphic_Monitor,_,_,_} -> Ref = initSimGraphics(?BOARD_SIZE),
+		%					loop(Parameters, Server_Gate_Monitor, Stat_Monitor, Ref);
+		stop -> stop()
 	end.
 	
 

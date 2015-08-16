@@ -8,7 +8,7 @@
 -include_lib("wx/include/wx.hrl").
 -define(REFRESH_TIME, 80).
 -define(STEP, 10).
--define(STATS,?wxID_STATS).
+-define(ABOUT,?wxID_ABOUT).
 -define(EXIT,?wxID_EXIT).
 
 -record(state, {frame, panel, nw_img, ww_img, z_img, corpse_img, sparks_img, tree1, tree2, tree3, tree4, tree5, bg, database}). 
@@ -20,7 +20,7 @@ setFrame(Frame) ->
 	MenuBar = wxMenuBar:new(),
 	File = wxMenu:new(),
 	Help = wxMenu:new(),
-	wxMenu:append(Help,?STATS,"Statistics of GOT SIM"),
+	wxMenu:append(Help,?ABOUT,"Statistics of GOT SIM"),
 	wxMenu:append(File,?EXIT,"Quit"),
 	wxMenuBar:append(MenuBar,File,"&File"),
 	wxMenuBar:append(MenuBar,Help,"&Statistics"),
@@ -146,8 +146,9 @@ varify(_, Type, [{_, {Type,_,_,_} }] ) -> 1;
 varify(_,_,_)-> 0.
 
 %routine happanes every time multimedia server closed
-close_mull_server() ->
+close_mull_server(State) ->
 	refresh_Process!stop,
+	wxWindow:close(State#state.database,[]),
 	%TODO - free simuletions memory 
 	exit(-1).
 %this function wait for inner msg (3 types of msgs), or user request from GUI:
@@ -171,12 +172,12 @@ loop(State)->
 			Text="Warrios:"++integer_to_list(A)++"			White Walkers:"++integer_to_list(B)++"			Zombies:"++integer_to_list(C)++"			resorections"++integer_to_list(D),
 			wxFrame:setStatusText(State#state.frame,Text);
 	show -> showSim(State);
-	stop -> close_mull_server();
+	stop -> close_mull_server(State);
 	%user interface msg
 	 #wx{id=?EXIT, event=#wxCommand{type=command_menu_selected}} -> io:format("trying to close~n"),
-    		wxWindow:close(State#state.database,[]), close_mull_server();
-	#wx{id=?STATS, event=#wxCommand{type=command_menu_selected}} -> io:format("OPEN ABOUT~n"); %TODO
-	#wx{event=#wxClose{}} -> close_mull_server()
+    		 main!stop;
+	#wx{id=?ABOUT, event=#wxCommand{type=command_menu_selected}} -> server_gate!stat_show; %TODO
+	#wx{event=#wxClose{}} -> main!stop
 	end,
 	loop(State).
 
