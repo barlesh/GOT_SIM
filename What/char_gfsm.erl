@@ -611,10 +611,4 @@ add_bodies(Bodies, Other_pid)->
 		_Else     ->
 			New_bodies=Bodies++[{body, Other_pid}]
 	end, 
-	New_bodies. 
-
-
-
-
-
-
+	New_bodies.

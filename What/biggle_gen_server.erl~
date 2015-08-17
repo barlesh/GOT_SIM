@@ -11,13 +11,11 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, create_world/2,get_close_chars/3, move_request/2, char_transition/2, fight/2, stop/2]).
+-export([start_link/1, create_world/2, get_close_chars/3, get_close_chars_master/3, close_chars_ans/2, move_request/2, char_transition/2, fight/2, stop/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
-
--export([run/5]).
 
 -define(SERVER, ?MODULE).
 -define(min_char_distance, 0.2).
@@ -26,7 +24,8 @@
 %			ets_table     - Id of biggle ets table, 
 %			board_size   - maybe size of total board, 
 %			board_limits - specifies specific biggle juristiction e.g {{x0,xn},{y0,yn}} 			
--record(state,     {state_name=default, ets_table, board_size, board_limits}). 
+-record(state,     {state_name=default, name, ets_table, board_size, board_limits, requests=[]}). 
+-record(request,   {type, ref, waiting_4, from}).  
 -record(character, {type, pid, location}).
 
 %%%===================================================================
@@ -40,8 +39,9 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-	gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+start_link(Name) ->
+	io:format("biggle server start link, this is ~p ~n", [Name]),
+	gen_server:start_link({global, Name}, ?MODULE, [Name], []).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -50,7 +50,6 @@ start_link() ->
 %% @spec stop() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-stop()-> stop(biggle_gen_server, 3).
 stop(Own_pid, Reason) ->
 	gen_server:call(Own_pid, {stop, Reason}).
 %%--------------------------------------------------------------------
@@ -72,8 +71,32 @@ create_world(Pid,  {Board_size, Board_limits, Num_warrior, Num_zombies, Num_ww, 
 %% @end
 %%--------------------------------------------------------------------
 get_close_chars(Pid, Location, Radius)->
-	gen_server:call(Pid, {get_close_chars, Location, Radius}).	
+	gen_server:call(Pid, {get_close_chars, Location, Radius}).
 
+get_close_chars_c(Pid, Location, Radius)->
+	gen_server:cast(Pid, {get_close_chars, Location, Radius}).	
+%%--------------------------------------------------------------------
+%% @doc
+%% For use of biggle master, Returns all characters close to Location, with out 
+%% checking if request is out of juristiction. 
+%% @spec 
+%% @end
+%%--------------------------------------------------------------------
+
+%Master requesting close chars 
+get_close_chars_master(Pid, Location, Radius)->
+	gen_server:call(Pid, {get_close_chars_master, Location, Radius}).	
+%%--------------------------------------------------------------------
+%% @doc
+%% For use of biggle master, when answer for close chars from other
+%% biggle_servers is ready. 
+%% @spec 
+%% @end
+%%--------------------------------------------------------------------
+
+close_chars_ans(Pid, {Ref, Close_chars})->
+	gen_server:cast(Pid, {close_chars_ans, Ref, Close_chars}).	
+	
 %%--------------------------------------------------------------------
 %% @doc
 %% Request permission to move to destination. 
@@ -118,10 +141,10 @@ fight(Pid, {Attackee_pid, Attacker_pid})->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
+init([Name]) ->
     %%Create Characters,
     TableId = ets:new(name,[bag]),	
-    {ok, #state{ ets_table=TableId } }.
+    {ok, #state{ ets_table=TableId, name=Name } }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -138,9 +161,9 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({create_world, Board_size, Board_limits, Num_warrior, Num_zombies, Num_ww, Num_trees, Num_rocks}, _From, State) ->	
-	%io:format("Creating world with: ~n Board size: ~p.~n Board limits: ~p.~n",[Board_size,Board_limits]),
-	%io:format("On board:  Warriors: ~p.~n Zombies: ~p.~n White Walkers: ~p.~n Trees: ~p.~n Rocks: ~p.~n",
-	%	  [Num_warrior, Num_zombies, Num_ww, Num_trees, Num_rocks]),		
+	io:format("Creating world with: ~n Board size: ~p.~n Board limits: ~p.~n",[Board_size,Board_limits]),
+	io:format("On board:  Warriors: ~p.~n Zombies: ~p.~n White Walkers: ~p.~n Trees: ~p.~n Rocks: ~p.~n",
+		  [Num_warrior, Num_zombies, Num_ww, Num_trees, Num_rocks]),		
 	New_state=State#state{board_size=Board_size,board_limits=Board_limits },
 	{characters_created, _, New_state1}=int_create_chars(New_state, [{trees, Num_trees},{rocks, Num_rocks}]), 
 	{characters_created, _, _}=int_create_chars(New_state1, [{warrior,Num_warrior},{zombie,Num_zombies},
@@ -154,31 +177,65 @@ handle_call({fight, Attackee_pid, Attacker_pid}, {_From_pid, _ref}, State)->
 	{reply, ok, State};
  
 handle_call({get_close_chars, Location, Radius}, {From_pid, _ref}, State) ->
-	%%io:format("Handle call: get_close_chars: From= ~p.~n",[From_pid]),	
-	Reply = int_close_chars(From_pid, Location, Radius, State#state.ets_table),
-	{reply, Reply, State};
+	%io:format("Handle call: get_close_chars: From= ~p.~n",[From_pid]),
+	Juri=is_in_juristiction(Location, Radius, State#state.board_size, State#state.board_limits), 	
+	case Juri of
+		true->
+			Reply = int_close_chars(From_pid, Location, Radius, Juri , State),
+			New_state=State; 
+		false-> %Create request, send request to master, return request record.
+			Ref=make_ref(),  
+			Req=#request{type=get_close_chars, ref=Ref, waiting_4=1, from=From_pid}, 
+			Reply={wait,Req},			
+			int_close_chars(From_pid, Location, Radius, Juri , State, Ref), 
+			Req_list=State#state.requests++[Req], 			
+			New_state=State#state{requests=Req_list} 
+	end, 	
+	{reply, Reply, New_state};
 
+handle_call({get_close_chars_master, Location, Radius}, {_From_pid, _ref}, State) ->
+	%io:format("Handle call: get_close_chars: From= ~p.~n",[From_pid]),	
+	Reply = int_close_chars_master(Location, Radius, State), 
+	{reply, Reply, State};
 
 handle_call({char_transition, Next_state}, {From_pid, _ref}, State) -> %Next_state can by dead or body or zombie (if  animated). 
 	char_transition(Next_state, From_pid, State), 
 	{reply, ok, State};
 
 handle_call({stop, Reason},_From, State) ->
-	%io:format("biggle_master handle call stop, reason: ~p.~n",[Reason]), 
+	io:format("biggle server handle call stop, reason: ~p.~n",[Reason]), 
 	{stop, normal, ok, State}; 
 
 handle_call({move_request, Curr_location, Destination, Type}, {From_pid, _ref}, State) ->
 	%%Check if destination free: 
-	Close_chars= int_close_chars(From_pid, Destination, ?min_char_distance, State#state.ets_table),	
-	case Close_chars of
-		[] ->%space free, allow movment. 
-			Reply={ok, Destination},
-			update_char_location(State#state.ets_table, From_pid, Destination, Type),  
-			multimedia_update({movement, {Type, From_pid, Curr_location, Destination}});
-		_Not_free ->
-			Reply={denied, {}}
-	end, 
-	{reply, Reply, State}.
+	Juri=is_in_juristiction(Destination, ?min_char_distance, State#state.board_size, State#state.board_limits), 	
+	io:format("server in handle call move request, Juri=~p~n",[Juri]),
+	case Juri of
+		true->
+			Close_chars=int_close_chars(From_pid, Destination, ?min_char_distance, true, State), 
+			case Close_chars of
+				[] ->%space free, allow movment. 
+				Reply={ok, Destination},
+				update_char_location(State#state.ets_table, From_pid, Destination, Type),  
+				multimedia_update({movement, {Type, From_pid, Curr_location, Destination}}),
+				New_state=State;
+				
+			_Not_free ->
+				Reply={denied, {}}, 		
+				New_state=State
+			end; 
+		false-> %Create request, send request to master, return request record.
+			io:format("biggle_server sending request to master and making req_ref~n"),			
+			Ref=make_ref(),  
+			Req=#request{type=get_close_chars, ref=Ref, waiting_4=1, from=From_pid}, 
+			Reply={wait, Req},
+			int_close_chars(From_pid, Destination, ?min_char_distance, false, State, Ref), 	 			
+			New_requests=State#state.requests ++[Req], 				
+			New_state=State#state{requests=New_requests}
+	end, 	
+	{reply, Reply, New_state}.
+	
+	
 
 
 %% @private
@@ -190,10 +247,18 @@ handle_call({move_request, Curr_location, Destination, Type}, {From_pid, _ref}, 
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(Msg, State) ->
-	%io:format(" voodoo voodoo handle_cast: ~p.~n",[Msg]),	
-	{noreply, State}.
 
+handle_cast({close_chars_ans, Ref, Close_chars}, State)->
+	Waiting_req=[X||X<-State#state.requests, Ref=:=X#request.ref], 		
+	Sendee=(lists:nth(1,Waiting_req))#request.from, 
+	io:format("server recieved close_chars_ans, matching waiting_req: ~p, sendee: ~p ~n",[Waiting_req, Sendee]), 
+	gen_fsm:send_event(Sendee, {cast_ans, Ref, Close_chars}),
+	Req_list=State#state.requests--Waiting_req, 
+	{noreply, State#state{requests=Req_list}};
+
+handle_cast(Msg, State) ->
+	io:format(" voodoo voodoo handle_cast: ~p.~n",[Msg]),	
+	{noreply, State}.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -205,7 +270,7 @@ handle_cast(Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(Info, State) ->
-	%io:format(" voodoo voodoo Unexpected message: ~p.~n",[Info]),
+	io:format(" voodoo voodoo Unexpected message: ~p.~n",[Info]),
 	{noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -220,7 +285,7 @@ handle_info(Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(Reason, State) ->
-	%io:format("In terminate: Biggle master received Stop.~n Reason: ~p~n ",[Reason]),
+	io:format("In terminate: Biggle server received Stop.~n Reason: ~p~n ",[Reason]),
 	%Stop character Fsm's,	
 	int_kill_chars(Reason, State#state.ets_table), 
 	%Delete Ets.     
@@ -242,6 +307,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+
 %%Generate fight update to multimedia according to format: {fight, {{Type1, Name1}, {Type2, Name2}, Location}}
 generate_fight_update({Attackee_pid, Attacker_pid}, State)->
 	[{_,{_, Type1, _, {X1,Y1}}}]=ets:lookup(State#state.ets_table, Attackee_pid),
@@ -250,9 +316,9 @@ generate_fight_update({Attackee_pid, Attacker_pid}, State)->
 	{fight, {{Type1, Attackee_pid}, {Type2, Attacker_pid}, Location}}. 
 
 print_ets(Ets_table)->
-	L=[{Type,Location2, Pid} || {_,{_,Type,Pid,Location2}}<-ets:tab2list(Ets_table)].
-	%io:format("Printing all ets:~n"),
-	%io:format("~p~n",[L]).	
+	L=[{Type,Location2, Pid} || {_,{_,Type,Pid,Location2}}<-ets:tab2list(Ets_table)],
+	io:format("Printing all ets:~n"),
+	io:format("~p~n",[L]).	
 
 %update multimedia server if exists.
 multimedia_update(Msg)->
@@ -278,15 +344,15 @@ update_char_type(Ets_table, New_type, From_pid)->
 			[{_,{_, Type, _, _}}]=ets:lookup(Ets_table, From_pid),			
 			Del=ets:delete(Ets_table, From_pid),
 			print_ets(Ets_table), 			
-			%io:format("Deleted dead ~p, Del=~p",[From_pid, Del]),
+			io:format("Deleted dead ~p, Del=~p",[From_pid, Del]),
 			multimedia_update({death,{Type, From_pid}}); 
 		_Else->%change to body or zombie
 			%{_Character, _Type, From_pid, Location}={character, k, From_pid, {0,0}},
 			print_ets(Ets_table),			
 			[{_,{_, Original_type, From_pid, Location}}]=ets:lookup(Ets_table, From_pid),
-			%%io:format("In update_char_type Match=~p, pid=~p~n",[Match, From_pid]),			
+			%io:format("In update_char_type Match=~p, pid=~p~n",[Match, From_pid]),			
 			Del=ets:delete(Ets_table, From_pid),
-			%io:format("In update_char_type Del=~p, pid=~p~n",[Del, From_pid]),					
+			io:format("In update_char_type Del=~p, pid=~p~n",[Del, From_pid]),					
 			print_ets(Ets_table),			
 			Char_rec=#character{type=New_type, pid=From_pid, location=Location},			
 			ets:insert(Ets_table, {From_pid, Char_rec}), 
@@ -298,9 +364,9 @@ update_char_type(Ets_table, New_type, From_pid)->
 %Change character location in Ets as result of movment. 
 update_char_location(Ets_table, Pid, New_location, Type) ->  	
 	Del=ets:delete(Ets_table, Pid),
-	%io:format("update_char_loc ~p to ~p in biggle: Del= ~p.~n",[Pid, Type, Del]),	
+	io:format("update_char_loc ~p to ~p in biggle: Del= ~p.~n",[Pid, Type, Del]),	
 	Char_rec=#character{type=Type, location=New_location, pid=Pid}, 	
-	%%io:format("In update_char_location: new char rec: ~p~n",[Char_rec]),	
+	%io:format("In update_char_location: new char rec: ~p~n",[Char_rec]),	
 	ets:insert(Ets_table, {Pid, Char_rec}). 
   
 %Stop character Fsm's,	
@@ -308,23 +374,47 @@ int_kill_chars(Reason, Ets) ->
 	[ char_gfsm:stop(Pid, Reason) || {_,{_,_, Pid ,_}}<-ets:tab2list(Ets), Pid/='undefined']. 	 
 
 %%Return close characters. 
-int_close_chars(Location1, Radius, Ets)->
-	[ {Type,Location2, Pid} || {_,{_,Type,Pid,Location2}}<-ets:tab2list(Ets), int_dist(Location1,Location2)<Radius]. 	
+%Call without requestor pid is for placing elements on board. 
+int_close_chars(Location1, Radius, State)->
+		[ {Type,Location2, Pid} || {_,{_,Type,Pid,Location2}}<-ets:tab2list(State#state.ets_table), 
+		   int_dist(Location1,Location2)<Radius].
 
-int_close_chars(Requestor_pid, Location1, Radius, Ets)->
-	[ {Type,Location2, Pid} || {_,{_,Type,Pid,Location2}}<-ets:tab2list(Ets), Requestor_pid/=Pid, int_dist(Location1,Location2)<Radius]. 	
+%Call is within juristiction, no need to contact other biggles. 
+int_close_chars(Requestor_pid, Location1, Radius, true, State)->
+		[ {Type,Location2, Pid} || {_,{_,Type,Pid,Location2}}<-ets:tab2list(State#state.ets_table), Requestor_pid/=Pid,
+		  int_dist(Location1,Location2)<Radius].
+ 
+%Call involves juristiction of other biggles. 
+int_close_chars(Requestor_pid, Location1, Radius, false, State, Ref)->
+	Ets=State#state.ets_table,
+	io:format("server asking magster remote~n"), 	
+	Pid=self(),
+	biggle_master:remote_close_char({global, biggle_master}, {Location1, Radius, Pid, Ref}).   
+	%Reply1=[ {Type,Location2, Pid} || {_,{_,Type,Pid,Location2}}<-ets:tab2list(Ets), Requestor_pid/=Pid, 
+	%	  int_dist(Location1,Location2)<Radius],
+	%io:format("close chars remote=~p~n",[Master_reply]), 
+	%Reply1++Master_reply.  
+
+%For master, when returning characters to other biggle, use reference and not pid. 
+int_close_chars_master(Location1, Radius, State)->
+		[ {Type,Location2, monitor(process,Pid)} || {_,{_,Type,Pid,Location2}}<-ets:tab2list(State#state.ets_table), 
+		   Type/=trees andalso Type/=rocks, int_dist(Location1,Location2)<Radius]
+						++
+		[ {Type,Location2, Pid} || {_,{_,Type,Pid,Location2}}<-ets:tab2list(State#state.ets_table), 
+		   Type=:=trees orelse Type=:=rocks, int_dist(Location1,Location2)<Radius]
+		.
 
 %%Calculate distance between two locations. 
 int_dist({X1,Y1}, {X2,Y2})->
 	math:sqrt( math:pow(X1-X2,2) + math:pow(Y1-Y2,2) ). 	
 
-%%Get a random free space whithin biggle masters area whith a radius of 1 clear around it.
+%%Get a random free space whithin biggle servers area whith a radius of 1 clear around it.
 int_get_rand_free_space(State)->
 	{{X0,Xn},{Y0,Yn}}=State#state.board_limits, %area of juristiction for specific biggle.
-	%io:format("In: get_rand_free_space(state) State#state.board_limits= ~p~n",[State#state.board_limits]),		
+	io:format("In: get_rand_free_space(state) State#state.board_limits= ~p~n",[State#state.board_limits]),		
 	{X,New_seed}=random:uniform_s( Xn ,erlang:now()),
 	{Y,_}=random:uniform_s( Yn-Y0 ,New_seed),
-	case ( int_close_chars({X0+X,Y0+Y}, 1, State#state.ets_table) ) of
+	case ( int_close_chars({X0+X,Y0+Y}, 1, State) ) of %TODO - change 1 to min char dist
 		[] -> {X0+X,Y0+Y}; 			%if free return location.
 		_  -> int_get_rand_free_space(State)    %else try again.
 	end.
@@ -358,7 +448,8 @@ int_make_char_record(Board_size, Type, Location) ->
 			Char=#character{type=Type, location=Location}, 
 			Pid=spawn(erlang, is_integer, [1]);		
 		_Character ->
-			{ok, Pid}=char_gfsm:start_link({biggle_gen_server, Board_size, Type, Location}),
+			Self=self(),
+			{ok, Pid}=char_gfsm:start_link({Self, Board_size, Type, Location}),
 			Char=#character{type=Type, location=Location, pid=Pid}
 	end,  	
 	multimedia_update({born, {Type, Pid, Location}}),
@@ -366,7 +457,50 @@ int_make_char_record(Board_size, Type, Location) ->
 
 
 
-run(W,WW,Z, T, R)-> 
-	start_link(),
-	create_world(biggle_gen_server, {1000, {{0,200},{0,200}}, W,WW,Z,T,R}).
+%Receives location on boared and decides if it is a legal point on board. 
+is_in_board({X1,Y1}, Board_size)->
+	(X1>0 andalso Y1>0 andalso X1<Board_size andalso Y1<Board_size). 
+
+%Decides if Location is with in biggle juristiction. Assumes point is leagel 
+%(within boared). Recieves Location {x,y} and Board
+is_in_juristiction(Location, Board_limits)->	
+	{X,Y}=Location,	
+	{{X1,X2},{Y1,Y2}}=Board_limits,
+	%Is location {{X1,X2},{Y1,Y2}} in biggle juristiction? 
+	case (X>X1 andalso X<X2 andalso Y>Y1 andalso Y<Y2) of
+		false ->
+			false; 
+		true  ->
+			true 
+	end. 			
+
+%Decides if radius is in juristiction, or if other biggles have to be advised. 
+is_in_juristiction(Location, Radius, Board_size, Board_limits)->
+	{X,Y}=Location,	
+	%Four suspicious points: 
+	P_check=[{X+Radius,Y}, {X-Radius,Y}, {X,Y+Radius}, {X,Y-Radius}],
+	is_list_in_juristiction(P_check, Board_size, Board_limits).
+
+
+
+%Function receives list of four points and checks if points are leagal and also not in 
+%specific biggle juristiction. Support function to is_in_juristiction() whith radius. 	
+%Return values are true and false. 
+is_list_in_juristiction([], _, _)->
+	true; %radius request is in juristiction.  
+is_list_in_juristiction([Point|Rest], Board_size, Board_limits)->
+	case	% is point leagel but not in juristiction of this biggle 
+			( (is_in_board(Point, Board_size) =:= true)
+					andalso
+		   (is_in_juristiction(Point, Board_limits) =:= false) )		 
+	of
+		false ->
+			is_list_in_juristiction(Rest, Board_size, Board_limits);  
+		true  ->		
+			false%Out of juristiction, need to consult other biggle. 	
+	end. 			
+
+
+
+
 

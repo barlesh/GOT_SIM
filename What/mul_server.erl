@@ -60,19 +60,22 @@ start(BOARD_SIZE)->
 		z_img=Image3, corpse_img=Image4, sparks_img = Image10, tree1 = Image5, tree2 = Image6,tree3 = Image7,tree4 = Image8, tree5 = Image9, bg=BG, database=ETS_table},
 	loop(State).
 
+%evaluate next cordinate to move to (X or Y)
 eval(From,From) -> From;
 eval(From, To) -> 
 	if From<To -> erlang:min(From+?STEP, To);
 	true-> erlang:max(From-?STEP, To) end.
-		
+
+%this function is spawned by server gate. it send init msg of "sparks" img (figth), and after 6 intervals of refresh time it sends a delene msg.	
 drewFight(Location) ->
 	multimedia_server!{init, {sparks, self(), Location}},
 	receive
 	after ?REFRESH_TIME * 6 -> multimedia_server!{remove, {self()}}
 	end.
 
+
 moveCharacter(_,_,L,L) -> exit(-1);
-%this function get a character's type, name and movemnet (from and to). it spawns a new process to sent main process new locations update every refresh time [ms] 
+%this function get a character's type, name and movemnet (from and to). it spawned by server gate ,to send multimedia server new locations update every refresh time [ms] 
 moveCharacter(Type, Name,{X_Curr, Y_Curr}, {X_Dest, Y_Dest} )-> 
 	receive
 	stop -> exit(-1)
@@ -124,7 +127,7 @@ showSim(State) ->
 	wxBufferedDC:destroy(DC),
 	wxClientDC:destroy(ClientDC).
 
-%this function send multimedia server a show msg to refresah simulator, at defined time intervals
+%this function send multimedia server a show msg to refresah simulator, at defined time intervals. 
 refreshSim() ->
 	receive
 	stop -> exit(-1)
@@ -151,56 +154,38 @@ close_mull_server(State) ->
 	wxWindow:close(State#state.database,[]),
 	%TODO - free simuletions memory 
 	exit(-1).
-%this function wait for inner msg (3 types of msgs), or user request from GUI:
-%a. (inner) show - comes every ~10 [ms] and replace current screen with new one with ets's info
-%b. (inner) movement - create new process whice will sent constantly new locations (updates) for a given chracter
-%c. (inner) update - a new location update for a given character (chracter name is an atom - key at ets)
-%d. (user) exit
-%e. (user) open ABOUT window
-%f. (user) statistics window TODO
+%mailoop of multimedia server.
 loop(State)->
 	receive
+	%initiation of new object
 	{init, {Type, Name, Location} } -> updateETS(State#state.database, Type, Name, Location, 0 , none);
+	%update object's new location and angle
 	{update, Pid, {Type, Name,  New_Location, Angle} } -> Ans = varify(Pid,Type, ets:lookup(State#state.database, Name)),
 					case Ans of 
 					0 -> ignore;
 					1-> updateETS(State#state.database, Type, Name, New_Location, Angle, Pid ) 
 					end;
+	%destruction of object
 	{remove, {Name}}-> ets:delete(State#state.database, Name);
+	%end of simulation msg. sent by SERVER GATE
 	{sim_ended, NW, WW, Z} -> showResult(State#state.frame, NW, WW, Z);
+	%a status msg sent by server gate
 	{status_text,A,B,C,D} -> 	io:format("at mul_server:loop A:~p,B:~p, C:~p, D:~p~n", [A,B,C,D]),
 			Text="Warrios:"++integer_to_list(A)++"			White Walkers:"++integer_to_list(B)++"			Zombies:"++integer_to_list(C)++"			resorections"++integer_to_list(D),
 			wxFrame:setStatusText(State#state.frame,Text);
+	%show msg. sent every ~REFRESH TIME
 	show -> showSim(State);
 	stop -> close_mull_server(State);
-	%user interface msg
+	%graphic intarface msgs
+	%exit button clicked
 	 #wx{id=?EXIT, event=#wxCommand{type=command_menu_selected}} -> io:format("trying to close~n"),
     		 main!stop;
-	#wx{id=?ABOUT, event=#wxCommand{type=command_menu_selected}} -> server_gate!stat_show; %TODO
+	%statistics button clicked
+	#wx{id=?ABOUT, event=#wxCommand{type=command_menu_selected}} -> server_gate!stat_show; 
+	% x clicked
 	#wx{event=#wxClose{}} -> main!stop
 	end,
 	loop(State).
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%TEMPURARY FUNCTION FOR CHECKING PROGRAM%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-move(Key, Type) ->
-	random:seed(now()),
-	X1 =  random:uniform(700),
-	X2 =  random:uniform(700),
-	Y1 =  random:uniform(700),
-	Y2 =  random:uniform(700),
-	case Type of
-	warrior-> server_gate!{movement, {warrior, Key, {X1,Y1}, {X2,Y2} } };
-	white_walker-> server_gate!{movement, {white_walker, Key, {X1,Y1}, {X2,Y2} } };
-	zombie -> server_gate!{movement, {zombie, Key, {X1,Y1}, {X2,Y2} } }
-	end.
-	
-test(N) -> 
-	[ move( "nw"++integer_to_list(X), warrior) || X<-lists:seq(1,trunc(N/3))],
-	timer:sleep(17),
-	[ move( "ww"++integer_to_list(X), white_walker) || X<-lists:seq(1,trunc(N/3))],
-	timer:sleep(17),
-	[ move( "z"++integer_to_list(X), zombie) || X<-lists:seq(1,trunc(N/3) )].
 

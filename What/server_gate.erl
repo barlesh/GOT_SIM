@@ -8,7 +8,7 @@ start() ->
 	register(server_gate, self() ),
 	loop(0).
 
-
+%loop before all characters initiated (didnt get 4 done msgs from biggles)
 loop(State)->
 	receive
 	done when State =:= 3 -> io:format("server_gate:all biggles done creating!!!!!!move to loop2~n"), loop2();
@@ -16,11 +16,12 @@ loop(State)->
 	{stats_update, NW_C,WW_C,Z_C,RES} -> multimedia_server!{status_text,NW_C,WW_C,Z_C,RES}
 	after 0 -> server()
 	end, loop(State).
-
+%loop after all characters initiated. now we can check if sim ended (num of warriors/num of zombies & whit walkers is 0)
 loop2() -> 
 	receive
 	{stats_update, NW_C,WW_C,Z_C,RES} ->
-			if ((NW_C =:= 0) orelse (WW_C+Z_C =:= 0))-> ignore;%TODO!!!!!!!
+			if ((NW_C =:= 0) orelse (WW_C+Z_C =:= 0))-> 	statistics_server!stat_show,
+									multimedia_server!{sim_ended, NW_C, WW_C, Z_C};
 			true -> multimedia_server!{status_text,NW_C,WW_C,Z_C,RES} end
 	after 0 -> server() end, loop2().
 	

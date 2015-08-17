@@ -1,0 +1,5 @@
+c(main). c(menu). c(server_gate). c(statistics). c(stat_window). c(mul_server). c(biggle_master). c(biggle_gen_server). c(char_gfsm).
+
+c(biggle_master). c(biggle_gen_server). c(char_gfsm).
+
+erl -setcookie bar -name biggle_1@192.168.0.102

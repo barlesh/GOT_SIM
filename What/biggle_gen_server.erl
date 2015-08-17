@@ -369,4 +369,3 @@ int_make_char_record(Board_size, Type, Location) ->
 run(W,WW,Z, T, R)-> 
 	start_link(),
 	create_world(biggle_gen_server, {1000, {{0,200},{0,200}}, W,WW,Z,T,R}).
-

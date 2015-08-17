@@ -44,29 +44,22 @@ make_window() ->
     Frame = wxFrame:new(Server, -1, "GOT Sim Menu", [{size,{900, 600}}]),
     Panel  = wxPanel:new(Frame),
 
- 
 %% create widgets
-%% the order entered here does not control appearance
+
     T1001 = wxTextCtrl:new(Panel, 1001,[{value, "20"}]), %set default value
     T1002 = wxTextCtrl:new(Panel, 1001,[{value, "5"}]), %set default value
     T1003 = wxTextCtrl:new(Panel, 1001,[{value, "10"}]), %set default value
     B101  = wxButton:new(Panel, 101, [{label, "&Start Simulation"}]),
     B102  = wxButton:new(Panel, ?wxID_EXIT, [{label, "C&ancel"}]),
  
-%%You can create sizers before or after the widgets that will go into them, but
-%%the widgets have to exist before they are added to sizer.
     OuterSizer   = wxBoxSizer:new(?wxHORIZONTAL),
     ImageSizer   = wxBoxSizer:new(?wxVERTICAL),
-   %ImageSizer   = wxStaticBoxSizer:new(?wxVERTICAL, Panel, []),
     MainSizer    = wxBoxSizer:new(?wxVERTICAL),
     NW_InputSizer  = wxStaticBoxSizer:new(?wxHORIZONTAL, Panel, [{label, "# of Night Watch Warriors"}]),
     WW_InputSizer  = wxStaticBoxSizer:new(?wxHORIZONTAL, Panel, [{label, "# of White Walkers"}]),
     Z_InputSizer  = wxStaticBoxSizer:new(?wxHORIZONTAL, Panel, [{label, "# of Zombies"}]),
     ButtonSizer = wxBoxSizer:new(?wxHORIZONTAL),
- 
-%% Note that the widget is added using the VARIABLE, not the ID.
-%% The order they are added here controls appearance.
- 
+
     wxSizer:add(NW_InputSizer, T1001, []),
     wxSizer:add(NW_InputSizer, 120, 0,[]),  %see note in tutorial text
  
@@ -107,8 +100,6 @@ make_window() ->
     wxSizer:add(ImageSizer, Canvas, []),
     wxSizer:add( OuterSizer,ImageSizer, []),
 
-
-%% Now 'set' OuterSizer into the Panel
     wxPanel:setSizer(Panel, OuterSizer),
  
      wxFrame:connect( Frame, close_window),
@@ -116,7 +107,7 @@ make_window() ->
 
     wxFrame:show(Frame),
 
-    IMG=wxImage:new("/home/barlesh/Erworkspace/FinalProject/GOT_SIM/Files/GOT11.png"),
+    IMG=wxImage:new("/home/barlesh/Erworkspace/FinalProject/GOT_SIM/Files/START_IMG.png"),
     ClientDC = wxClientDC:new(Canvas),
     Bitmap = wxBitmap:new(IMG),
     wxDC:drawBitmap(ClientDC, Bitmap, {0,0}),
@@ -127,20 +118,22 @@ make_window() ->
 loop(State) -> 
 	
 	receive 
+	%start simulation button clicked
 	#wx{id = 101, event=#wxCommand{type = command_button_clicked}} ->
 		NW=list_to_integer(wxTextCtrl:getValue(State#parameters.nw)),
 		WW=list_to_integer(wxTextCtrl:getValue(State#parameters.ww)),
 		Z=list_to_integer(wxTextCtrl:getValue(State#parameters.z)),	
 		case checkParams(NW,WW,Z) of ok-> main!{NW,WW,Z}, exitMenu(State#parameters.frame); error -> showError(State#parameters.frame) end;
-
+	% x (exit) clicked
 	#wx{event=#wxClose{}} ->
-            io:format("~p Closing window ~n",[self()]), %optional, goes to shell
-        exitMenu(State#parameters.frame);
+            	io:format("~p Closing window ~n",[self()]), %optional, goes to shell
+        	exitMenu(State#parameters.frame);
 
-	           %this message is sent when the exit button is clicked.
+	%this message is sent when the exit button is clicked.
 	#wx{id = ?wxID_EXIT, event=#wxCommand{type = command_button_clicked} } ->
-            io:format("~p Closing window ~n",[self()]), 
-        exitMenu(State#parameters.frame);
+           	 io:format("~p Closing window ~n",[self()]), 
+        	 exitMenu(State#parameters.frame);
+	%msg sent by refreshing process
 	changIMG -> changeIMG(State#parameters.canvas)
 	end,
 	loop(State).
@@ -150,6 +143,7 @@ showError(Frame)->
 	D = wxMessageDialog:new (Frame, "Wrong Parameters. Try again"),
 	wxMessageDialog:showModal (D). 
 
+%this function select randomaly image to sshow
 changeIMG(Canvas) ->
 	X= random:uniform(10),
 	case X of 

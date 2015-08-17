@@ -2,7 +2,8 @@
 -compile(export_all).
 -author('BarLesh').
 
-start({NW,WW,Z}) -> 
+%init statistics server. init ETS 
+start(Param) -> 
 	%register(statistics_server, self()),
 	ETS_table = ets:new(statistics, []),
 	ets:insert(ETS_table,{nw_created, 0} ),
@@ -15,32 +16,35 @@ start({NW,WW,Z}) ->
 	ets:insert(ETS_table,{nw, 0} ),
 	ets:insert(ETS_table,{ww, 0} ),
 	ets:insert(ETS_table,{z, 0} ),
-	waitForStart(ETS_table).
-waitForStart(ETS_table)->
+	waitForStart(ETS_table,Param).
+%statistics server starts only after all other parts of sumulation initited. save start time
+waitForStart(ETS_table,Param)->
 	receive
 	start -> io:format("statistics got start msg!~n");
-	check -> io:format("stats1 is ok.~n"), waitForStart(ETS_table)
+	check -> io:format("stats1 is ok.~n"), waitForStart(ETS_table,Param)
 	end,
 	{_,Start_Time,_}=now(),
-	loop(Start_Time,ETS_table).
+	loop(Start_Time,ETS_table,Param).
 
-showStats(ETS_table,Start_Time)->
-	[A|_] =ets:lookup(ETS_table, nw_created),
-	[B|_] =ets:lookup(ETS_table, ww_created),
-	[C|_] =ets:lookup(ETS_table, z_created),
-	[D|_] =ets:lookup(ETS_table, nw_killed),
-	[E|_] =ets:lookup(ETS_table, ww_killed),
-	[F|_] =ets:lookup(ETS_table, z_killed),
-	[G|_] =ets:lookup(ETS_table, resorection),
+%this function is called when user want to see statistics. it spawns a GUI (WX) process with statistics parameters
+showStats(ETS_table,Start_Time,Param)->
+	{A,B,C} = Param,
+	[{_,D}|_] =ets:lookup(ETS_table, nw_killed),
+	[{_,E}|_] =ets:lookup(ETS_table, ww_killed),
+	[{_,F}|_] =ets:lookup(ETS_table, z_killed),
+	[{_,G}|_] =ets:lookup(ETS_table, resorection),
 	{_,_,T} = now(),
-	H = (T-Start_Time) / 1000,
+	H = ((Start_Time-T)/10000),
 	H1 = trunc(H),
-	spawn(fun()-> stat_window:start( {A,B,C,D,E,F,G,{time_Elepsed,H1} })  end) .
+	io:format("at statistics before opening stat_window params are: ~p,~p,~p,~p,~p,~p,~p,~p~n", [A,B,C,D,E,F,G,H1]),
+	spawn(fun()-> stat_window:start( {A,B,C,D,E,F,G,H1 })  end) .
 
-loop(Start_Time,ETS_table) ->
-	[{_,A}] = ets:lookup(ETS_table, nw), [{_,B}] = ets:lookup(ETS_table, ww), [{_,C}] = ets:lookup(ETS_table, z), [{_,D}] = ets:lookup(ETS_table,resorection ),
+%main loop os statistics server
+loop(Start_Time,ETS_table,Param) ->
+	[{_,A}] = ets:lookup(ETS_table, nw), 
+	[{_,B}] = ets:lookup(ETS_table, ww), 
+	[{_,C}] = ets:lookup(ETS_table, z), [{_,D}] = ets:lookup(ETS_table,resorection ),
 	server_gate! {stats_update, A,B,C,D},	%%multimadia server update of current characters numbers
-	%io:format("at statistics:loop A:~p,B:~p, C:~p, D:~p~n", [A,B,C,D]),
 	receive
 	{warrior, created}  ->  [{nw_created, N}] = ets:lookup(ETS_table, nw_created), ets:insert(ETS_table,{nw_created, N+1} ),
 				[{nw, M}] = ets:lookup(ETS_table, nw), ets:insert(ETS_table,{nw, M+1} );
@@ -49,21 +53,21 @@ loop(Start_Time,ETS_table) ->
 	{zombie, created}  -> [{z_created, N}] = ets:lookup(ETS_table, z_created), ets:insert(ETS_table,{nw_created, N+1} ),
 				[{z, M}] = ets:lookup(ETS_table, z), ets:insert(ETS_table,{z, M+1} );
 	{warrior, killed}  -> [{nw_killed, N}] = ets:lookup(ETS_table, nw_killed), ets:insert(ETS_table,{nw_killed, N+1} ),
-				[{nw, M}] = ets:lookup(ETS_table, nw), ets:insert(ETS_table,{nw, M-1} );
+				[{nw, M}] = ets:lookup(ETS_table, nw), ets:insert(ETS_table,{nw, M-1} ),
+				[{_, K}] = ets:lookup(ETS_table, nw_created),
+				io:format("warrior killed. num of warrios is:~p. warriors created is:~p~n", [M-1,K]);
 	{white_walker, killed}  -> [{ww_killed, N}] = ets:lookup(ETS_table, ww_killed), ets:insert(ETS_table,{ww_killed, N+1} ),
 				[{ww, M}] = ets:lookup(ETS_table, ww), ets:insert(ETS_table,{ww,M-1} );
 	{zombie, killed}  -> [{z_killed, N}] = ets:lookup(ETS_table, z_killed), ets:insert(ETS_table,{z_killed, N+1} ),
 				[{z, M}] = ets:lookup(ETS_table, z), ets:insert(ETS_table,{z, M-1} );
 	{resorection}-> [{resorection, N}] = ets:lookup(ETS_table, resorection), ets:insert(ETS_table,{resorection, N+1} );
 
-	%{From, stat_request} -> From!sendStats(Start_Time,ETS_table);
 	check -> io:format("stats2 is ok.~n");
 	print -> print(ETS_table);
-	stat_show -> showStats(ETS_table, Start_Time);
-	stop -> %TODO - close ets
-		exit(-1)
+	stat_show -> showStats(ETS_table, Start_Time,Param);
+	stop -> exit(-1)
 	end, 
-	loop(Start_Time,ETS_table).
+	loop(Start_Time,ETS_table,Param).
 
 print(ETS_table)->
 	[{_,A}] = ets:lookup(ETS_table, nw_created), 
