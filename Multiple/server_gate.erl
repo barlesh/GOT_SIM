@@ -1,0 +1,57 @@
+-module(server_gate).
+-compile(export_all).
+-author('BarLesh').
+
+-record(state, {all_created}).
+
+start() ->
+	register(server_gate, self() ),
+	loop(0).
+
+%loop before all characters initiated (didnt get 4 done msgs from biggles)
+loop(State)->
+	receive
+	done when State =:= 3 -> io:format("server_gate:all biggles done creating!!!!!!move to loop2~n"), loop2();
+	done -> X = loop(State+1);
+	{stats_update, NW_C,WW_C,Z_C,RES} -> multimedia_server!{status_text,NW_C,WW_C,Z_C,RES}
+	after 0 -> server()
+	end, loop(State).
+%loop after all characters initiated. now we can check if sim ended (num of warriors/num of zombies & whit walkers is 0)
+loop2() -> 
+	receive
+	{stats_update, NW_C,WW_C,Z_C,RES} ->
+			if ((NW_C =:= 0) orelse (WW_C+Z_C =:= 0))-> 	statistics_server!stat_show,
+									multimedia_server!{sim_ended, NW_C, WW_C, Z_C};
+			true -> multimedia_server!{status_text,NW_C,WW_C,Z_C,RES} end
+	after 0 -> server() end, loop2().
+	
+server()->
+	receive
+	{born, {trees, Name, Location} } -> X = random:uniform(5), case X of
+									1-> Type = tree1;
+									2-> Type = tree2;
+									3-> Type = tree3;
+									4-> Type = tree4;
+									5-> Type = tree5
+									end,
+					io:format("at server_gate tree name is ~p~n", [Name]),
+					multimedia_server!{init, {Type, Name,  Location} };
+	{born, {Type, Name, Location} } -> multimedia_server!{init, {Type, Name,  Location} },
+					statistics_server!{Type, created};
+	{death, {Type, Name}} -> io:format("at server_gate, ~p killed~n",[Name]),
+				multimedia_server!{remove, {Name} },
+				statistics_server!{Type, killed};
+	{transition, {Original_Type, Trans_Type, Name, Location} } -> multimedia_server!{remove, {Name} },
+						multimedia_server!{init, {Trans_Type, Name,  Location} }, 
+								case Original_Type of 
+								warrior -> statistics_server!{warrior, killed};
+								body -> statistics_server!{zombie, created}, 
+									statistics_server!{resorection}
+								end;
+	{movement, {Type, Name, {X1,Y1}, {X2,Y2} }  } -> spawn(fun()-> mul_server:moveCharacter(Type, Name, 
+									{trunc(X1), trunc(Y1)}, {trunc(X2), trunc(Y2)} ) end);	
+	{fight, {{Type1, Name1}, {Type2, Name2}, Location}} -> mul_server:drewFight(Location);
+	{won_figth, {Type, Name, New_Location}} ->[]; %updateETS(State#state.database, Type, Name, New_Location, 0 )
+	stat_show -> statistics_server!stat_show;
+	stop -> exit(-1)	
+	end.
