@@ -21,7 +21,6 @@ start(Param) ->
 waitForStart(ETS_table,Param)->
 	receive
 	start -> io:format("statistics got start msg!~n");
-	stop -> exit(-1);
 	check -> io:format("stats1 is ok.~n"), waitForStart(ETS_table,Param)
 	end,
 	{_,Start_Time,_}=now(),

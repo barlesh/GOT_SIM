@@ -295,8 +295,10 @@ handle_cast({move_request_ans, Ref, Answer}, State)->
 	case Answer of
 		{remote_move_approved, _} ->%Remote move request approved, kill char. 
 			char_gfsm:stop(Sendee, 'Moved to different biggle'), 
-			delete_char_from_ets(State#state.ets_table, Sendee); 	
+			delete_char_from_ets(State#state.ets_table, Sendee);	
+			%io:format("###########################move approved##############################################");
 		{remote_move_denied, _ }  ->
+			%io:format("%%%%%%%%%%%%%%%%%%%%%%%%%%5move denied%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"),
 			gen_fsm:send_event(Sendee, {cast_ans, Ref, remote_move_denied});
 		_Else ->
 			io:format("server: move_request_ans error")
@@ -403,8 +405,11 @@ update_char_type(Ets_table, New_type, From_pid)->
 			multimedia_update({transition, {Original_type, New_type, From_pid, Location}})
 	end.	
 
-delete_char_from_ets(Ets_table, Pid) ->  	
+delete_char_from_ets(Ets_table, Pid) -> 
+	[{_,{_,Type,_,_} }] = ets:lookup(Ets_table, Pid),
+	io:format("%%%%%%%%%%%%%%%%%%********************came back from ets:~p  #############$$$$$$$$$$$$$$$%%%%%%~n", [Char]), 	
 	Del=ets:delete(Ets_table, Pid),
+	multimedia_update({death, {Type, Pid}}),
 	io:format("deleting char ~p from Ets.~n", [Pid]).  	
 
 %Change character location in Ets as result of movment. 
@@ -463,7 +468,7 @@ int_get_rand_free_space(State)->
 		true-> int_get_rand_free_space(State); 
 		false->	
 			case ( int_close_chars({X0+X,Y0+Y}, ?min_char_distance, State) ) of 
-				[] -> {X0+X,Y0+Y}%; 			%if free return location.
+				[] -> {X0+X,Y0+Y}; 			%if free return location.
 				_  -> int_get_rand_free_space(State)    %else try again.
 			end
 	end. 

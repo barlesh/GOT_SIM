@@ -36,9 +36,13 @@ initMaster({NW,WW,Z})->
 %his function is called when simulation is stopped. it send killing signal to all Beagleboards's Admins, wait for confermation from all of them, then send killing signal to SimGrahics GUI, and then killes statistics
 stop()->
 	killAdmins(), 
+	timer:sleep(500),
 	killGate(),
+	timer:sleep(500),
 	killSimGraphics(),
+	timer:sleep(500),
 	killStatistics(),
+	timer:sleep(500),
 	exit(-1). 
 
 run() -> spawn(fun()->start() end).

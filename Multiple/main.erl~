@@ -36,9 +36,13 @@ initMaster({NW,WW,Z})->
 %his function is called when simulation is stopped. it send killing signal to all Beagleboards's Admins, wait for confermation from all of them, then send killing signal to SimGrahics GUI, and then killes statistics
 stop()->
 	killAdmins(), 
+	timer:delay(1000),
 	killGate(),
+	timer:delay(1000),
 	killSimGraphics(),
+	timer:delay(1000),
 	killStatistics(),
+	timer:delay(1000),
 	exit(-1). 
 
 run() -> spawn(fun()->start() end).
@@ -68,7 +72,7 @@ loop(Parameters, Server_Gate_Monitor, Stat_Monitor, Graphic_Monitor) ->
 	end, loop(Parameters, Server_Gate_Monitor, Stat_Monitor, Graphic_Monitor).
 	
 %killing functions
-killAdmins()-> biggle_master:stop({global, biggle_master},normal).
+killAdmins()-> biggle_master:stop({global, biggle_master},c).
 killGate() -> server_gate!stop.
 killSimGraphics()-> multimedia_server!stop.
 killStatistics()-> statistics_server!stop.
