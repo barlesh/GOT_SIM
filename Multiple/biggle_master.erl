@@ -20,10 +20,10 @@
 	 terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
--define(biggle_1, 'biggle_1@127.0.0.1').
--define(biggle_2, 'biggle_2@127.0.0.1').
--define(biggle_3, 'biggle_3@127.0.0.1').
--define(biggle_4, 'biggle_4@127.0.0.1').
+-define(biggle_1, 'biggle_1@192.168.0.240').
+-define(biggle_2, 'biggle_2@192.168.0.241').
+-define(biggle_3, 'biggle_3@192.168.0.100').
+-define(biggle_4, 'biggle_4@192.168.0.100').
 
 -record(state, {num_biggles, biggle_list, board_size}).
 

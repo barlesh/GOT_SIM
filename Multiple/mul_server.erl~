@@ -152,6 +152,7 @@ varify(_,_,_)-> 0.
 close_mull_server(State) ->
 	refresh_Process!stop,
 	wxWindow:close(State#state.database,[]),
+	io:format("mul_server stopped~n"),
 	%TODO - free simuletions memory 
 	exit(-1).
 %mailoop of multimedia server.

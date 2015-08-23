@@ -28,7 +28,7 @@ initSimGraphics(BOARD_SIZE) -> Pid = spawn(fun()-> mul_server:start(BOARD_SIZE) 
 initMaster({NW,WW,Z})-> 
 	io:format("initiation of master, arams are:~p~n",[{NW,WW,Z}]),
 	biggle_master:start_link(?NUM_OF_BIGGLES),
-	timer:sleep(500),
+	timer:sleep(500).
 	biggle_master:start_biggles({global,biggle_master}, {?BOARD_SIZE, NW,WW,Z, ?NUM_TREES, ?NUM_ROCKES}).
 	%biggle_gen_server:start_link(),
 	%biggle_gen_server:create_world(biggle_gen_server, {?BOARD_SIZE, {{0,?BOARD_SIZE},{0,?BOARD_SIZE}}, NW,WW,Z,0,0}).
@@ -36,13 +36,13 @@ initMaster({NW,WW,Z})->
 %his function is called when simulation is stopped. it send killing signal to all Beagleboards's Admins, wait for confermation from all of them, then send killing signal to SimGrahics GUI, and then killes statistics
 stop()->
 	killAdmins(), 
-	timer:delay(1000),
+	timer:sleep(500),
 	killGate(),
-	timer:delay(1000),
+	timer:sleep(500),
 	killSimGraphics(),
-	timer:delay(1000),
+	timer:sleep(500),
 	killStatistics(),
-	timer:delay(1000),
+	timer:sleep(500),
 	exit(-1). 
 
 run() -> spawn(fun()->start() end).
